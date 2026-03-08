@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeForge — Multi-Language Playground</title>
+
+<!-- CodeMirror CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<!-- CodeForge Styles -->
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<body>
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>Code<em>Forge</em>
+    </div>
+    <div class="vdiv"></div>
+    <div id="langTabs"></div>
+    <div class="top-right">
+      <button class="btn-upload" onclick="document.getElementById('fileInput').click()" title="Open file (Ctrl+O)">
+        📂 Open File
+      </button>
+      <input type="file" id="fileInput" accept="*">
+      <div class="vdiv"></div>
+      <button class="btn-clear" onclick="clearOutput()">Clear</button>
+      <button class="btn-run" id="runBtn" onclick="runCode()">
+        ▶ Run <small style="opacity:.55;font-weight:400;font-size:.65rem">Ctrl+↵</small>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN SPLIT AREA -->
+  <div id="main">
+
+    <!-- EDITOR PANEL -->
+    <div class="panel" id="editorPanel">
+      <div class="phead">
+        <span class="phead-title">Editor</span>
+        <span class="phead-badge" id="langBadge">javascript</span>
+        <span class="phead-file" id="fileLabel" style="display:none"></span>
+        <div class="phead-r">
+          <span class="phead-cursor" id="cursorPos">1 : 1</span>
+        </div>
+      </div>
+      <div id="editorWrap">
+        <textarea id="codeEditor"></textarea>
+      </div>
+    </div>
+
+    <!-- DRAG SPLITTER -->
+    <div id="splitter"></div>
+
+    <!-- OUTPUT PANEL -->
+    <div class="panel" id="outputPanel">
+      <div class="otabs">
+        <div class="otab on" id="tabCon" onclick="switchTab('console')">
+          <span class="odot"></span>Console
+        </div>
+        <div class="otab" id="tabPrev" onclick="switchTab('preview')" style="display:none">
+          <span class="odot"></span>Preview
+        </div>
+        <div class="otab-clear" onclick="clearOutput()">Clear ✕</div>
+      </div>
+
+      <div id="outputBody">
+        <!-- Loader overlay -->
+        <div id="loader">
+          <div class="spin"></div>
+          <div id="loaderText">Running…</div>
+        </div>
+
+        <!-- Console -->
+        <div id="consoleView" class="on">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-icon">▣</div>
+            <div>Press ▶ Run to execute</div>
+            <div class="empty-sub">Ctrl + Enter shortcut</div>
+          </div>
+        </div>
+
+        <!-- HTML Preview -->
+        <div id="previewView">
+          <div class="prev-bar">
+            <div class="prev-dots">
+              <div class="prev-dot"></div><div class="prev-dot"></div><div class="prev-dot"></div>
+            </div>
+            <div class="prev-url" id="prevUrl">preview://sandbox</div>
+          </div>
+          <iframe id="previewFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div id="statusbar">
+    <div class="sitem"><div class="sdot" id="sdot"></div><span id="stext">Ready</span></div>
+    <div class="sitem" id="slang">JavaScript</div>
+    <div class="sitem" id="sapiStatus" title="Piston API status">
+      <span id="sapiDot" style="width:5px;height:5px;border-radius:50%;background:var(--t3);display:inline-block"></span>
+      <span id="sapiText">API checking…</span>
+    </div>
+    <div class="sitem ssep" id="stime"></div>
+    <div class="sitem" id="sfileStat" style="display:none;color:var(--cyan)"></div>
+    <div class="sitem">CodeForge v2.0</div>
+  </div>
+</div>
+
+<!-- Drag-drop overlay -->
+<div id="dropZone">
+  <div class="dz-icon">📂</div>
+  <div class="dz-text">Drop your file here</div>
+  <div class="dz-sub">Any source code file</div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- CodeMirror Core -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<!-- Modes -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/lua/lua.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/ruby/ruby.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/rust/rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/go/go.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/php/php.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/swift/swift.min.js"></script>
+<!-- Addons -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
+
+<!-- CodeMirror Core -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+
+<!-- CodeMirror Modes -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/lua/lua.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/ruby/ruby.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/rust/rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/go/go.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/php/php.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/swift/swift.min.js"></script>
+
+<!-- CodeMirror Addons -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
+
+<!-- CodeForge Scripts (order matters!) -->
+<script src="js/langs.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/runners.js"></script>
+<script src="js/api.js"></script>
+<script src="js/editor.js"></script>
+
+</body>
+</html>
