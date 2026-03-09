@@ -1538,7 +1538,20 @@ const LANGS = [
   { id:'ruby', label:'Ruby', ext:['rb'], dot:'#701516', cm:'ruby', piston:'ruby',
     code:`# Ruby — via Wandbox API\nputs "Hello from Ruby! 💎"\ndef fib(n)=n<=1?n:fib(n-1)+fib(n-2)\nputs "Fibonacci: #{(0..10).map{|i|fib(i)}.join(', ')}"` },
   { id:'php', label:'PHP', ext:['php'], dot:'#4f5d95', cm:'php', piston:'php',
-    code:`<?php\necho "Hello from PHP! 🐘\\n";\nfunction fib($n){return $n<=1?$n:fib($n-1)+fib($n-2);}\n$f=array_map('fib',range(0,10));\necho "Fibonacci: ".implode(", ",$f)."\\n";\n?>` },
+    code:`<?php
+// PHP — via Wandbox API
+echo "Hello from PHP! 🐘\n";
+
+function fib($n) {
+    return $n <= 1 ? $n : fib($n-1) + fib($n-2);
+}
+
+$fibs = array_map('fib', range(0, 10));
+echo "Fibonacci: " . implode(", ", $fibs) . "\n";
+
+$langs = ["PHP", "Python", "JavaScript"];
+echo "Languages: " . implode(", ", $langs) . "\n";
+?>` },
   { id:'bash', label:'Bash', ext:['sh','bash'], dot:'#89e051', cm:'shell', piston:'bash',
     code:`#!/bin/bash\necho "Hello from Bash! 🐚"\nNAME="CodeForge"\necho "Welcome to $NAME v2.0"\nfor i in 1 2 3 4 5; do echo "  $i squared = $((i*i))"; done` },
 ];
@@ -1905,14 +1918,14 @@ async function runLua(code){
 const WANDBOX_URL  = 'https://wandbox.org/api/compile.json';
 const WANDBOX_LIST = 'https://wandbox.org/api/list.json';
 const WANDBOX_CFG  = {
-  cpp:  {candidates:['gcc-head','gcc-13.2.0','gcc-12.3.0','clang-head']},
+  cpp:  {candidates:['gcc-head','gcc-13.2.0','gcc-12.3.0','clang-head','clang-16.0.0']},
   c:    {candidates:['gcc-head','gcc-13.2.0','gcc-12.3.0'], options:'-x c -std=c17'},
   java: {candidates:['openjdk-head','openjdk-jdk-21+35','openjdk-jdk-17+35']},
-  rust: {candidates:['rust-head','rust-1.70.0','rust-1.65.0']},
-  go:   {candidates:['go-head','go-1.21.0','go-1.20.5']},
-  ruby: {candidates:['ruby-head','ruby-3.2.2','ruby-3.1.4']},
-  php:  {candidates:['php-head','php-8.2.7','php-8.1.22']},
-  bash: {candidates:['bash','bash-5.2.15','bash-5.1.16']},
+  rust: {candidates:['rust-head','rust-1.70.0','rust-1.65.0','rust-1.60.0']},
+  go:   {candidates:['go-1.23.2','go-1.22.8','go-1.16.3','go-1.15.11']},
+  ruby: {candidates:['ruby-3.4.1','ruby-3.3.6','ruby-3.2.6','ruby-3.1.6','ruby-3.0.7']},
+  php:  {candidates:['php-8.3.12','php-8.2.24','php-8.1.30','php-8.0.30']},
+  bash: {candidates:['bash','bash-5.2.15','bash-5.2.0','bash-5.1.16','bash-5.0.18']},
 };
 const wandboxCompilers={};
 let wandboxOnline=false;
@@ -1963,47 +1976,62 @@ function updateBadge(lid,state){
   el.classList.remove(r1,r2); el.classList.add(add); el.textContent=lbl;
 }
 
-async function runPiston(code){
+async function runPiston(code){\
   clearConsole(); switchTab('console');
   const lid=curLang.id;
   const cfg=WANDBOX_CFG[lid];
   if(!cfg){ appendLine('error',`Language "${curLang.label}" not configured`); return; }
-  const compiler=wandboxCompilers[lid]||cfg.candidates[0];
+
   if(!wandboxOnline) appendLine('warn','⚠ API was offline — attempting now…');
-  appendLine('info',`· Sending to Wandbox API (${compiler})…`);
-  let data=null,lastErr=null;
-  for(let attempt=1;attempt<=2;attempt++){
+
+  // Build list of compilers to try: resolved first, then all candidates
+  const resolved=wandboxCompilers[lid];
+  const toTry=resolved
+    ? [resolved, ...cfg.candidates.filter(c=>c!==resolved)]
+    : [...cfg.candidates];
+
+  let data=null, lastErr=null, usedCompiler=null;
+
+  for(const compiler of toTry){
+    appendLine('info',`· Trying ${compiler}…`);
     try{
       const sendCode=lid==='java'?code.replace(/\bpublic(\s+)(class|interface|enum)\b/g,'$2'):code;
       const body={compiler,code:sendCode,stdin:'',save:false};
       if(cfg.options) body['compiler-option-raw']=cfg.options;
       const r=await fetchWithTimeout(WANDBOX_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},20000);
+      if(r.status===500){ lastErr=new Error('HTTP 500'); continue; } // try next candidate
       if(!r.ok) throw new Error(`HTTP ${r.status}`);
-      data=await r.json(); break;
+      data=await r.json();
+      usedCompiler=compiler;
+      wandboxCompilers[lid]=compiler; // remember what worked
+      break;
     }catch(e){
       lastErr=e;
-      if(attempt<2){ appendLine('warn',`⟳ Attempt ${attempt} failed (${e.message}) — retrying…`); await new Promise(r=>setTimeout(r,1500)); }
+      appendLine('warn',`⟳ ${compiler} failed (${e.message})`);
+      await new Promise(r=>setTimeout(r,500));
     }
   }
+
   if(!data){
     showExecMeta(curLang.label,false);
-    appendLine('error',`✗ All attempts failed: ${lastErr?.message}`);
+    appendLine('error',`✗ All compilers failed: ${lastErr?.message}`);
     appendLine('info','· Check your internet connection');
     wandboxOnline=false; setApiStatus('offline','API Offline');
     Object.keys(WANDBOX_CFG).forEach(l=>updateBadge(l,'offline'));
     showToast('✗ API unreachable','err'); return;
   }
+
   wandboxOnline=true; setApiStatus('online','API Online'); updateBadge(lid,'ok');
-  const code2=parseInt(data.status??'0',10);
+  const exitCode=parseInt(data.status??'0',10);
   const po=data.program_output||'', co=data.compiler_output||'',
         ce=data.compiler_error||'', pe=data.program_error||'';
-  const ok=code2===0&&!ce;
-  showExecMeta(`${curLang.label} · ${compiler}`,ok);
+  const ok=exitCode===0&&!ce;
+  showExecMeta(`${curLang.label} · ${usedCompiler}`,ok);
   if(co) co.split('\n').filter(Boolean).forEach(l=>appendLine('info',l));
   if(ce) ce.split('\n').filter(Boolean).forEach(l=>appendLine('error',l));
   if(po) po.split('\n').forEach((l,i,a)=>{ if(i===a.length-1&&!l)return; appendLine('output',l); });
   if(pe) pe.split('\n').filter(Boolean).forEach(l=>appendLine('error',l));
-  if(code2!==0) appendLine('warn',`↳ Exit code ${code2}`);
+  if(exitCode!==0) appendLine('warn',`↳ Exit code ${exitCode}`);
   if(!po&&!ce&&!pe&&ok) appendLine('info','→ No output');
   if(ok) showToast('✓ Executed via Wandbox','ok');
   else   showToast('✗ Execution error','err');
