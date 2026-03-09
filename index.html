@@ -1976,7 +1976,7 @@ function updateBadge(lid,state){
   el.classList.remove(r1,r2); el.classList.add(add); el.textContent=lbl;
 }
 
-async function runPiston(code){\
+async function runPiston(code){
   clearConsole(); switchTab('console');
   const lid=curLang.id;
   const cfg=WANDBOX_CFG[lid];
