@@ -2,38 +2,950 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>CodeForge — Multi-Language Playground</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08080b;--bg2:#0e0e12;--bg3:#131318;--bg4:#1a1a22;
+  --bd:#1e1e2a;--bd2:#2a2a3a;--bd3:#3a3a4e;
+  --t:#eeeef5;--t2:#7a7a90;--t3:#3a3a52;
+  --green:#3ddc84;--green2:#2ab369;
+  --cyan:#4dd0e1;--blue:#5b9cf6;
+  --yellow:#ffd54f;--red:#ff6b55;--purple:#b388ff;
+  --font:'Space Grotesk',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --display:'Orbitron',sans-serif;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--t);font-family:var(--font)}
+
+/* ═══════════════════════════════════════
+   PAGE ROUTER
+═══════════════════════════════════════ */
+.page{
+  position:fixed;inset:0;
+  transition:opacity .4s ease, transform .4s ease;
+  overflow:hidden;
+}
+.page.hidden{opacity:0;pointer-events:none;transform:scale(.98)}
+.page.active{opacity:1;pointer-events:all;transform:scale(1)}
+
+/* ═══════════════════════════════════════
+   LANDING PAGE
+═══════════════════════════════════════ */
+#landing{
+  background:var(--bg);
+  overflow-y:auto;
+  overflow-x:hidden;
+  display:flex;flex-direction:column;
+}
+#landing::-webkit-scrollbar{width:4px}
+#landing::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:2px}
+
+/* Grid background */
+#landing::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(61,220,132,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(61,220,132,.04) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;z-index:0;
+}
+
+/* Radial glow */
+#landing::after{
+  content:'';position:fixed;
+  top:-20%;left:50%;transform:translateX(-50%);
+  width:80vw;height:60vh;
+  background:radial-gradient(ellipse, rgba(61,220,132,.08) 0%, transparent 70%);
+  pointer-events:none;z-index:0;
+}
+
+/* ── NAV ── */
+.lnav{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;
+  padding:0 clamp(16px,5vw,60px);
+  height:60px;
+  background:rgba(8,8,11,.85);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--bd);
+}
+.lnav-logo{
+  display:flex;align-items:center;gap:10px;
+  font-family:var(--display);font-size:.85rem;
+  font-weight:700;letter-spacing:.1em;color:var(--t);
+  text-decoration:none;
+}
+.lnav-logo .ico{
+  width:30px;height:30px;
+  background:linear-gradient(135deg,var(--green),var(--cyan));
+  border-radius:7px;display:flex;align-items:center;
+  justify-content:center;font-size:14px;flex-shrink:0;
+}
+.lnav-logo em{color:var(--green);font-style:normal}
+.lnav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.btn-ghost{
+  padding:7px 16px;background:transparent;
+  border:1px solid var(--bd2);border-radius:7px;
+  color:var(--t2);font-family:var(--font);font-size:.82rem;font-weight:600;
+  cursor:pointer;transition:all .15s;
+}
+.btn-ghost:hover{background:var(--bg4);color:var(--t);border-color:var(--bd3)}
+.btn-primary{
+  padding:8px 20px;background:var(--green);
+  border:none;border-radius:7px;
+  color:#041a0b;font-family:var(--font);font-size:.82rem;font-weight:700;
+  cursor:pointer;transition:all .15s;
+}
+.btn-primary:hover{background:#5beea0;transform:scale(1.02)}
+
+/* ── HERO ── */
+.hero{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;
+  padding:clamp(60px,10vh,120px) clamp(16px,5vw,60px) clamp(40px,6vh,80px);
+  min-height:calc(100vh - 60px);
+}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:5px 14px;border-radius:20px;
+  background:rgba(61,220,132,.08);border:1px solid rgba(61,220,132,.2);
+  font-family:var(--mono);font-size:.7rem;font-weight:600;
+  color:var(--green);letter-spacing:.08em;
+  margin-bottom:28px;
+  animation:fadeup .6s ease both;
+}
+.hero-eyebrow .pulse{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--green);
+  animation:pulse 2s ease infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+
+.hero-title{
+  font-family:var(--display);
+  font-size:clamp(2.4rem,7vw,5.5rem);
+  font-weight:900;line-height:1.05;
+  letter-spacing:.02em;
+  color:var(--t);
+  margin-bottom:20px;
+  animation:fadeup .6s .1s ease both;
+}
+.hero-title .accent{color:var(--green)}
+.hero-title .dim{color:var(--t3)}
+
+.hero-sub{
+  font-size:clamp(.95rem,2vw,1.15rem);
+  color:var(--t2);max-width:560px;line-height:1.65;
+  margin-bottom:40px;
+  animation:fadeup .6s .2s ease both;
+}
+.hero-sub strong{color:var(--t);font-weight:600}
+
+.hero-cta{
+  display:flex;flex-wrap:wrap;gap:12px;
+  justify-content:center;
+  margin-bottom:56px;
+  animation:fadeup .6s .3s ease both;
+}
+.hero-cta .btn-big{
+  padding:13px 32px;border-radius:9px;
+  font-family:var(--font);font-size:.95rem;font-weight:700;
+  cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px;
+}
+.hero-cta .btn-big.solid{
+  background:var(--green);color:#041a0b;border:none;
+}
+.hero-cta .btn-big.solid:hover{background:#5beea0;transform:translateY(-2px)}
+.hero-cta .btn-big.outline{
+  background:transparent;color:var(--t);
+  border:1px solid var(--bd2);
+}
+.hero-cta .btn-big.outline:hover{background:var(--bg4);border-color:var(--bd3);transform:translateY(-2px)}
+
+/* Terminal preview */
+.terminal-preview{
+  width:100%;max-width:680px;
+  background:var(--bg2);border:1px solid var(--bd2);
+  border-radius:12px;overflow:hidden;
+  box-shadow:0 40px 80px rgba(0,0,0,.6);
+  animation:fadeup .6s .4s ease both;
+  text-align:left;
+}
+.term-bar{
+  height:38px;background:var(--bg3);
+  border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;gap:7px;padding:0 14px;
+}
+.term-dot{width:11px;height:11px;border-radius:50%}
+.term-dot:nth-child(1){background:#ff5f57}
+.term-dot:nth-child(2){background:#febc2e}
+.term-dot:nth-child(3){background:#28c840}
+.term-title{margin-left:auto;margin-right:auto;font-family:var(--mono);font-size:.65rem;color:var(--t3)}
+.term-body{padding:20px;font-family:var(--mono);font-size:.82rem;line-height:1.8}
+.term-line{display:flex;gap:10px}
+.term-ps{color:var(--green)}
+.term-cmd{color:var(--t)}
+.term-out{color:var(--cyan)}
+.term-ok{color:var(--green)}
+.term-dim{color:var(--t3)}
+.term-cursor{
+  display:inline-block;width:8px;height:14px;
+  background:var(--green);vertical-align:middle;
+  animation:blink 1s step-end infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── STATS ── */
+.stats-strip{
+  position:relative;z-index:1;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:1px;background:var(--bd);
+  border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);
+}
+.stat-card{
+  background:var(--bg);
+  padding:28px 20px;text-align:center;
+}
+.stat-num{
+  font-family:var(--display);font-size:2rem;font-weight:900;
+  color:var(--green);letter-spacing:.02em;
+  margin-bottom:4px;
+}
+.stat-lbl{font-size:.8rem;color:var(--t2);font-weight:500}
+
+/* ── FEATURES ── */
+.features{
+  position:relative;z-index:1;
+  padding:clamp(60px,8vh,100px) clamp(16px,5vw,60px);
+}
+.section-title{
+  font-family:var(--display);font-size:clamp(1.4rem,3vw,2rem);
+  font-weight:900;letter-spacing:.05em;
+  color:var(--t);margin-bottom:8px;text-align:center;
+}
+.section-sub{
+  font-size:.9rem;color:var(--t2);text-align:center;
+  margin-bottom:48px;max-width:480px;margin-left:auto;margin-right:auto;
+}
+.features-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:16px;max-width:1100px;margin:0 auto;
+}
+.feat-card{
+  background:var(--bg2);border:1px solid var(--bd);
+  border-radius:12px;padding:28px;
+  transition:all .2s ease;
+}
+.feat-card:hover{border-color:var(--bd3);transform:translateY(-3px);background:var(--bg3)}
+.feat-icon{
+  width:44px;height:44px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;margin-bottom:16px;
+}
+.feat-icon.green{background:rgba(61,220,132,.1)}
+.feat-icon.cyan{background:rgba(77,208,225,.1)}
+.feat-icon.purple{background:rgba(179,136,255,.1)}
+.feat-icon.yellow{background:rgba(255,213,79,.1)}
+.feat-icon.blue{background:rgba(91,156,246,.1)}
+.feat-icon.red{background:rgba(255,107,85,.1)}
+.feat-title{font-size:.95rem;font-weight:700;color:var(--t);margin-bottom:8px}
+.feat-desc{font-size:.82rem;color:var(--t2);line-height:1.6}
+
+/* ── LANG GRID ── */
+.langs-section{
+  position:relative;z-index:1;
+  padding:clamp(40px,6vh,80px) clamp(16px,5vw,60px);
+  background:var(--bg2);border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);
+}
+.lang-chips{
+  display:flex;flex-wrap:wrap;gap:10px;
+  justify-content:center;max-width:800px;margin:0 auto;
+}
+.lang-chip{
+  display:flex;align-items:center;gap:7px;
+  padding:8px 16px;border-radius:20px;
+  background:var(--bg3);border:1px solid var(--bd2);
+  font-family:var(--mono);font-size:.75rem;font-weight:600;color:var(--t2);
+  transition:all .15s;
+}
+.lang-chip:hover{border-color:var(--bd3);color:var(--t)}
+.lang-chip .cdot{width:8px;height:8px;border-radius:50%}
+.lang-chip .badge{
+  font-size:.58rem;font-weight:700;letter-spacing:.05em;
+  padding:1px 5px;border-radius:3px;
+}
+.badge-wasm{background:rgba(77,208,225,.12);color:var(--cyan);border:1px solid rgba(77,208,225,.25)}
+.badge-api{background:rgba(61,220,132,.1);color:var(--green);border:1px solid rgba(61,220,132,.2)}
+
+/* ── FOOTER ── */
+.lfooter{
+  position:relative;z-index:1;
+  padding:32px clamp(16px,5vw,60px);
+  border-top:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:16px;
+}
+.lfooter-left{font-family:var(--mono);font-size:.7rem;color:var(--t3)}
+.lfooter-right{font-family:var(--mono);font-size:.7rem;color:var(--t3)}
+
+/* ═══════════════════════════════════════
+   AUTH MODAL
+═══════════════════════════════════════ */
+#authOverlay{
+  position:fixed;inset:0;z-index:500;
+  background:rgba(8,8,11,.9);backdrop-filter:blur(10px);
+  display:none;align-items:center;justify-content:center;padding:16px;
+}
+#authOverlay.show{display:flex}
+
+.auth-box{
+  width:100%;max-width:420px;
+  background:var(--bg2);border:1px solid var(--bd2);
+  border-radius:16px;overflow:hidden;
+  animation:zoomin .25s ease;
+}
+@keyframes zoomin{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+
+.auth-header{
+  padding:28px 28px 0;
+  display:flex;align-items:center;gap:12px;
+}
+.auth-logo{
+  width:36px;height:36px;
+  background:linear-gradient(135deg,var(--green),var(--cyan));
+  border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.auth-title{font-family:var(--display);font-size:.95rem;font-weight:700;letter-spacing:.08em;color:var(--t)}
+.auth-close{
+  margin-left:auto;width:28px;height:28px;
+  background:transparent;border:1px solid var(--bd2);border-radius:6px;
+  color:var(--t2);font-size:14px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.auth-close:hover{background:var(--bg4);color:var(--t)}
+
+.auth-tabs{
+  display:flex;margin:20px 28px 0;border-bottom:1px solid var(--bd);
+}
+.auth-tab{
+  padding:8px 20px;font-size:.82rem;font-weight:600;
+  color:var(--t2);cursor:pointer;
+  border-bottom:2px solid transparent;transition:all .15s;
+  user-select:none;
+}
+.auth-tab.on{color:var(--green);border-bottom-color:var(--green)}
+
+.auth-body{padding:24px 28px 28px}
+.auth-field{margin-bottom:16px}
+.auth-label{
+  display:block;font-size:.75rem;font-weight:600;
+  color:var(--t2);margin-bottom:6px;letter-spacing:.04em;
+}
+.auth-input{
+  width:100%;padding:10px 14px;
+  background:var(--bg3);border:1px solid var(--bd2);
+  border-radius:8px;color:var(--t);
+  font-family:var(--font);font-size:.88rem;
+  outline:none;transition:border-color .15s;
+}
+.auth-input:focus{border-color:var(--green)}
+.auth-input::placeholder{color:var(--t3)}
+.auth-hint{font-size:.72rem;color:var(--t3);margin-top:4px}
+
+.auth-btn{
+  width:100%;padding:11px;
+  background:var(--green);color:#041a0b;
+  border:none;border-radius:8px;
+  font-family:var(--font);font-size:.88rem;font-weight:700;
+  cursor:pointer;transition:all .15s;margin-top:4px;
+}
+.auth-btn:hover{background:#5beea0}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.auth-divider{
+  display:flex;align-items:center;gap:12px;
+  margin:18px 0;font-size:.72rem;color:var(--t3);
+}
+.auth-divider::before,.auth-divider::after{
+  content:'';flex:1;height:1px;background:var(--bd);
+}
+
+.btn-guest{
+  width:100%;padding:10px;
+  background:transparent;color:var(--t2);
+  border:1px solid var(--bd2);border-radius:8px;
+  font-family:var(--font);font-size:.85rem;font-weight:600;
+  cursor:pointer;transition:all .15s;
+}
+.btn-guest:hover{background:var(--bg4);color:var(--t)}
+
+.auth-err{
+  background:rgba(255,107,85,.08);border:1px solid rgba(255,107,85,.2);
+  border-radius:7px;padding:9px 12px;
+  font-size:.78rem;color:var(--red);margin-bottom:12px;display:none;
+}
+.auth-err.show{display:block}
+
+/* ═══════════════════════════════════════
+   PLAYGROUND PAGE
+═══════════════════════════════════════ */
+#playground{
+  background:var(--bg);
+  display:flex;flex-direction:column;
+  width:100%;height:100%;
+}
+
+/* ── TOPBAR ── */
+#topbar{
+  flex-shrink:0;height:50px;background:var(--bg2);
+  border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;padding:0 14px;gap:10px;z-index:50;
+}
+.logo{display:flex;align-items:center;gap:7px;font-family:var(--display);font-size:.75rem;font-weight:700;letter-spacing:.08em;flex-shrink:0;color:var(--t);cursor:pointer}
+.logo-icon{width:26px;height:26px;background:linear-gradient(135deg,var(--green),var(--cyan));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.logo em{color:var(--green);font-style:normal}
+.vdiv{width:1px;height:22px;background:var(--bd2);flex-shrink:0}
+
+#langTabs{display:flex;align-items:center;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+#langTabs::-webkit-scrollbar{display:none}
+.ltab{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:5px;
+  border:1px solid transparent;background:transparent;
+  color:var(--t2);font-family:var(--mono);
+  font-size:.68rem;font-weight:500;cursor:pointer;
+  transition:all .13s;white-space:nowrap;flex-shrink:0;user-select:none;
+}
+.ltab:hover{background:var(--bg4);color:var(--t);border-color:var(--bd2)}
+.ltab.on{background:var(--bg3);color:var(--t);border-color:var(--bd2)}
+.ltab .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ltab .eng-badge{
+  font-size:.5rem;font-weight:700;letter-spacing:.04em;
+  padding:1px 4px;border-radius:3px;line-height:1.4;flex-shrink:0;
+}
+.eng-badge.wasm{background:rgba(77,208,225,.12);color:var(--cyan);border:1px solid rgba(77,208,225,.25)}
+.eng-badge.api-ok{background:rgba(61,220,132,.1);color:var(--green);border:1px solid rgba(61,220,132,.22)}
+.eng-badge.api-off{background:rgba(255,107,85,.08);color:var(--red);border:1px solid rgba(255,107,85,.2)}
+.eng-badge.api-chk{background:rgba(255,213,79,.08);color:var(--yellow);border:1px solid rgba(255,213,79,.2)}
+
+.top-right{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.btn-tb{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 12px;background:transparent;
+  border:1px solid var(--bd2);border-radius:6px;color:var(--t2);
+  font-family:var(--font);font-size:.73rem;font-weight:600;
+  cursor:pointer;transition:all .13s;white-space:nowrap;
+}
+.btn-tb:hover{background:var(--bg4);color:var(--t)}
+.btn-run{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 16px;background:var(--green);color:#051a0c;
+  border:none;border-radius:6px;
+  font-family:var(--font);font-size:.78rem;font-weight:700;
+  cursor:pointer;transition:all .13s;letter-spacing:.02em;
+}
+.btn-run:hover:not(:disabled){background:#5beea0;transform:scale(1.02)}
+.btn-run:disabled{opacity:.4;cursor:not-allowed;transform:none}
+#fileInput{display:none}
+
+/* user avatar in topbar */
+.user-btn{
+  display:flex;align-items:center;gap:7px;
+  padding:5px 10px;border-radius:6px;
+  background:var(--bg3);border:1px solid var(--bd2);
+  color:var(--t2);font-family:var(--font);font-size:.73rem;font-weight:600;
+  cursor:pointer;transition:all .13s;
+}
+.user-btn:hover{background:var(--bg4);color:var(--t)}
+.user-avatar{
+  width:20px;height:20px;border-radius:50%;
+  background:linear-gradient(135deg,var(--green),var(--cyan));
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#041a0b;flex-shrink:0;
+}
+
+/* ── MAIN SPLIT ── */
+#main{
+  flex:1;display:flex;min-height:0;overflow:hidden;
+}
+.panel{
+  display:flex;flex-direction:column;
+  overflow:hidden;min-width:0;min-height:0;
+}
+#editorPanel{flex:0 0 50%}
+#outputPanel{flex:1}
+
+/* ── DRAG SPLITTER ── */
+#splitter{
+  flex-shrink:0;width:5px;
+  background:var(--bd);cursor:col-resize;
+  transition:background .15s;position:relative;z-index:10;
+}
+#splitter:hover,#splitter.dragging{background:var(--green)}
+#splitter::after{
+  content:'';position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:2px;height:32px;background:var(--bd2);border-radius:1px;
+}
+#splitter:hover::after,#splitter.dragging::after{background:rgba(61,220,132,.5)}
+
+/* ── PANEL HEADERS ── */
+.phead{
+  flex-shrink:0;height:34px;
+  display:flex;align-items:center;
+  padding:0 13px;gap:8px;
+  background:var(--bg3);border-bottom:1px solid var(--bd);
+}
+.phead-title{font-family:var(--mono);font-size:.63rem;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.08em}
+.phead-badge{
+  font-family:var(--mono);font-size:.6rem;font-weight:600;
+  color:var(--green);padding:1px 7px;border-radius:3px;
+  background:rgba(61,220,132,.07);border:1px solid rgba(61,220,132,.18);
+}
+.phead-file{
+  font-family:var(--mono);font-size:.6rem;color:var(--cyan);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;
+}
+.phead-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.phead-cursor{font-family:var(--mono);font-size:.6rem;color:var(--t3)}
+
+/* ── EDITOR WRAP ── */
+#editorWrap{flex:1;overflow:hidden;min-height:0}
+.CodeMirror{height:100%!important;font-family:var(--mono)!important;font-size:13px!important;line-height:1.7!important;background:#0b0b0e!important}
+.CodeMirror-scroll{overflow-y:scroll!important}
+.CodeMirror-gutters{background:#08080c!important;border-right:1px solid #161620!important}
+.CodeMirror-linenumber{color:#252538!important;font-size:11.5px!important;padding:0 8px 0 4px!important}
+.CodeMirror-cursor{border-left:2px solid var(--green)!important}
+.CodeMirror-selected{background:rgba(61,220,132,.09)!important}
+.CodeMirror-activeline-background{background:rgba(255,255,255,.02)!important}
+
+/* ── OUTPUT TABS ── */
+.otabs{
+  flex-shrink:0;height:34px;
+  background:var(--bg3);border-bottom:1px solid var(--bd);
+  display:flex;align-items:stretch;
+}
+.otab{
+  display:flex;align-items:center;gap:5px;
+  padding:0 14px;
+  font-family:var(--mono);font-size:.63rem;font-weight:600;
+  color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;
+  transition:all .13s;text-transform:uppercase;letter-spacing:.06em;user-select:none;
+}
+.otab:hover{color:var(--t2)}
+.otab.on{color:var(--green);border-bottom-color:var(--green)}
+.otab .odot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.6}
+.otab-clear{
+  margin-left:auto;padding:0 12px;
+  font-family:var(--mono);font-size:.62rem;
+  color:var(--t3);cursor:pointer;transition:color .13s;user-select:none;
+  display:flex;align-items:center;
+}
+.otab-clear:hover{color:var(--t2)}
+
+/* ── OUTPUT BODY ── */
+#outputBody{flex:1;position:relative;overflow:hidden;min-height:0}
+#consoleView{
+  position:absolute;inset:0;overflow-y:auto;
+  padding:14px 16px;
+  font-family:var(--mono);font-size:12.5px;line-height:1.72;display:none;
+}
+#consoleView.on{display:block}
+#consoleView::-webkit-scrollbar{width:5px}
+#consoleView::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:3px}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--t3);font-size:.72rem}
+.empty-icon{font-size:2.2rem;opacity:.28}
+.empty-sub{color:var(--t3);font-size:.6rem;opacity:.7}
+.cline{display:flex;gap:10px;padding:1px 0;animation:fadein .1s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+.cline .cpre{color:var(--t3);flex-shrink:0;user-select:none;min-width:14px}
+.cline.output .cval{color:var(--t)}
+.cline.error  .cval{color:var(--red)}.cline.error .cpre{color:var(--red);opacity:.45}
+.cline.warn   .cval{color:var(--yellow)}.cline.warn .cpre{color:var(--yellow);opacity:.45}
+.cline.info   .cval{color:var(--cyan)}
+.cline.success .cval{color:var(--green)}
+.csep{border:none;border-top:1px solid var(--bd);margin:8px 0}
+.exec-meta{display:flex;align-items:center;gap:7px;padding:4px 0 7px;font-size:.61rem;color:var(--t3);letter-spacing:.04em}
+.ebadge{padding:2px 6px;border-radius:3px;font-size:.57rem;font-weight:700;letter-spacing:.06em}
+.eok{background:rgba(61,220,132,.1);color:var(--green);border:1px solid rgba(61,220,132,.2)}
+.eerr{background:rgba(255,107,85,.1);color:var(--red);border:1px solid rgba(255,107,85,.2)}
+
+#previewView{position:absolute;inset:0;flex-direction:column;display:none}
+#previewView.on{display:flex}
+.prev-bar{flex-shrink:0;height:34px;background:var(--bg4);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;padding:0 12px}
+.prev-dots{display:flex;gap:5px}
+.prev-dot{width:10px;height:10px;border-radius:50%}
+.prev-dot:nth-child(1){background:#ff5f57}.prev-dot:nth-child(2){background:#febc2e}.prev-dot:nth-child(3){background:#28c840}
+.prev-url{flex:1;background:var(--bg3);border:1px solid var(--bd2);border-radius:4px;padding:3px 9px;font-family:var(--mono);font-size:.64rem;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#previewFrame{flex:1;border:none;background:#fff;min-height:0}
+
+#loader{position:absolute;inset:0;background:rgba(8,8,11,.88);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:20;backdrop-filter:blur(2px)}
+#loader.on{display:flex}
+.spin{width:30px;height:30px;border:2px solid var(--bd2);border-top-color:var(--green);border-radius:50%;animation:rot .65s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+#loaderText{font-family:var(--mono);font-size:.7rem;color:var(--t2)}
+
+/* ── STATUSBAR ── */
+#statusbar{
+  flex-shrink:0;height:22px;background:var(--bg3);
+  border-top:1px solid var(--bd);
+  display:flex;align-items:center;padding:0 13px;gap:14px;
+  font-family:var(--mono);font-size:.61rem;color:var(--t3);
+}
+.sitem{display:flex;align-items:center;gap:4px}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--t3)}
+.sdot.run{background:var(--green);animation:spulse .9s ease infinite}
+@keyframes spulse{0%,100%{opacity:1}50%{opacity:.4}}
+.ssep{margin-left:auto}
+
+/* ── DRAG DROP ── */
+#dropZone{
+  position:fixed;inset:0;z-index:999;
+  background:rgba(8,8,11,.92);
+  display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:14px;
+  border:2px dashed var(--green);pointer-events:none;
+}
+#dropZone.show{display:flex}
+#dropZone .dz-icon{font-size:3rem}
+#dropZone .dz-text{font-size:1.1rem;font-weight:700;color:var(--green)}
+#dropZone .dz-sub{font-family:var(--mono);font-size:.72rem;color:var(--t2)}
+
+/* ── TOAST ── */
+#toast{
+  position:fixed;bottom:30px;right:14px;
+  padding:8px 14px;background:var(--bg4);
+  border:1px solid var(--bd2);border-radius:7px;z-index:9999;
+  font-family:var(--mono);font-size:.68rem;color:var(--t);
+  opacity:0;transform:translateY(6px);
+  transition:all .18s ease;pointer-events:none;
+}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast.ok{border-color:rgba(61,220,132,.3)}
+#toast.err{border-color:rgba(255,107,85,.3)}
+
+/* ═══════════════════════════════════════
+   MOBILE — bottom tab nav
+═══════════════════════════════════════ */
+#mobileNav{
+  display:none;
+  flex-shrink:0;height:52px;
+  background:var(--bg2);border-top:1px solid var(--bd);
+  align-items:stretch;z-index:50;
+}
+.mnav-btn{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;
+  background:transparent;border:none;color:var(--t3);
+  font-family:var(--font);font-size:.6rem;font-weight:600;
+  cursor:pointer;transition:all .13s;letter-spacing:.04em;
+  text-transform:uppercase;border-top:2px solid transparent;
+}
+.mnav-btn.on{color:var(--green);border-top-color:var(--green)}
+.mnav-btn .mico{font-size:16px}
+.mnav-run{
+  background:var(--green)!important;color:#041a0b!important;
+  font-weight:700!important;border-radius:0;
+}
+.mnav-run.running{background:var(--bg4)!important;color:var(--yellow)!important}
+
+@media(max-width:700px){
+  /* Hide desktop splitter on mobile */
+  #splitter{display:none}
+  #mobileNav{display:flex}
+
+  /* Topbar: hide lang tabs, show just logo + run */
+  #langTabs{display:none}
+  .btn-tb{display:none}
+  .vdiv{display:none}
+  #topbar{padding:0 12px;gap:8px}
+
+  /* Panels stack — each takes full height when active */
+  #main{flex-direction:column;position:relative}
+  #editorPanel{
+    position:absolute;inset:0;
+    flex:none!important;
+    transition:transform .2s ease,opacity .2s ease;
+  }
+  #outputPanel{
+    position:absolute;inset:0;
+    flex:none!important;
+    transition:transform .2s ease,opacity .2s ease;
+  }
+
+  /* Mobile panel switching */
+  #editorPanel.mob-hidden{transform:translateX(-100%);opacity:0;pointer-events:none}
+  #outputPanel.mob-hidden{transform:translateX(100%);opacity:0;pointer-events:none}
+
+  /* Mobile lang selector: inside editor panel header as scrollable row */
+  .mob-lang-row{
+    display:flex;overflow-x:auto;gap:4px;padding:8px 10px;
+    background:var(--bg3);border-bottom:1px solid var(--bd);
+    scrollbar-width:none;flex-shrink:0;
+  }
+  .mob-lang-row::-webkit-scrollbar{display:none}
+
+  /* Status bar adjustments */
+  #statusbar .sitem:not(:first-child):not(#sapiStatus){display:none}
+  #statusbar .ssep{display:none}
+}
+
+@keyframes fadeup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+</style>
 </head>
 <body>
-<div id="app">
-  <div id="topbar">
-    <div class="logo"><div class="logo-icon">⚡</div>Code<em>Forge</em></div>
-    <div class="vdiv"></div>
-    <div id="langTabs"></div>
-    <div class="top-right">
-      <button class="btn-upload" onclick="document.getElementById('fileInput').click()" title="Open file (Ctrl+O)">📂 Open File</button>
-      <input type="file" id="fileInput" accept="*">
-      <div class="vdiv"></div>
-      <button class="btn-clear" onclick="clearOutput()">Clear</button>
-      <button class="btn-run" id="runBtn" onclick="runCode()">▶ Run <small style="opacity:.55;font-weight:400;font-size:.65rem">Ctrl+↵</small></button>
+
+<!-- ═══════════════════════════════════
+     LANDING PAGE
+═══════════════════════════════════ -->
+<div class="page active" id="landing">
+
+  <!-- NAV -->
+  <nav class="lnav">
+    <a class="lnav-logo" href="#">
+      <div class="ico">⚡</div>
+      Code<em>Forge</em>
+    </a>
+    <div class="lnav-right">
+      <button class="btn-ghost" onclick="showAuth('login')">Log In</button>
+      <button class="btn-primary" onclick="showAuth('signup')">Get Started</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-eyebrow">
+      <span class="pulse"></span>
+      12 Languages · In-Browser Execution
+    </div>
+    <h1 class="hero-title">
+      Code in Any<br>
+      <span class="accent">Language.</span><br>
+      <span class="dim">Right Now.</span>
+    </h1>
+    <p class="hero-sub">
+      A <strong>multi-language playground</strong> that runs in your browser.
+      JavaScript &amp; HTML natively. Python &amp; Lua via WebAssembly.
+      C++, Java, Rust, Go and more via cloud API.
+    </p>
+    <div class="hero-cta">
+      <button class="btn-big solid" onclick="enterAsGuest()">
+        ▶ Launch Playground
+      </button>
+      <button class="btn-big outline" onclick="showAuth('signup')">
+        🔑 Create Free Account
+      </button>
+    </div>
+
+    <!-- Terminal preview -->
+    <div class="terminal-preview">
+      <div class="term-bar">
+        <div class="term-dot"></div><div class="term-dot"></div><div class="term-dot"></div>
+        <span class="term-title">codeforge — python3</span>
+      </div>
+      <div class="term-body">
+        <div class="term-line"><span class="term-ps">›</span><span class="term-cmd">print("Hello from Python! 🐍")</span></div>
+        <div class="term-line"><span class="term-ps">›</span><span class="term-cmd">squares = [x**2 for x in range(1, 6)]</span></div>
+        <div class="term-line"><span class="term-ps">›</span><span class="term-cmd">print("Squares:", squares)</span></div>
+        <div class="term-line"><span class="term-dim" style="height:8px"></span></div>
+        <div class="term-line"><span class="term-ok">✓</span><span class="term-out"> Hello from Python! 🐍</span></div>
+        <div class="term-line"><span class="term-ok">✓</span><span class="term-out"> Squares: [1, 4, 9, 16, 25]</span></div>
+        <div class="term-line" style="margin-top:6px"><span class="term-ps">›</span><span class="term-cursor"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <div class="stats-strip">
+    <div class="stat-card"><div class="stat-num">12</div><div class="stat-lbl">Languages</div></div>
+    <div class="stat-card"><div class="stat-num">4</div><div class="stat-lbl">In-Browser (offline)</div></div>
+    <div class="stat-card"><div class="stat-num">0</div><div class="stat-lbl">Setup Required</div></div>
+    <div class="stat-card"><div class="stat-num">Free</div><div class="stat-lbl">No Account Needed</div></div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="features">
+    <h2 class="section-title">EVERYTHING YOU NEED</h2>
+    <p class="section-sub">A full coding environment, right in your browser tab.</p>
+    <div class="features-grid">
+      <div class="feat-card">
+        <div class="feat-icon green">⚡</div>
+        <div class="feat-title">Instant Execution</div>
+        <div class="feat-desc">Run code with Ctrl+Enter. No compilation wait, no setup, no installs. Just write and run.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon cyan">🌐</div>
+        <div class="feat-title">Works Offline</div>
+        <div class="feat-desc">JavaScript, HTML, Python (Pyodide), and Lua (WASM) run completely offline after first load.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon purple">📂</div>
+        <div class="feat-title">File Import</div>
+        <div class="feat-desc">Open any source file from your computer via button, Ctrl+O, or drag &amp; drop onto the page.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon yellow">✏️</div>
+        <div class="feat-title">Smart Editor</div>
+        <div class="feat-desc">Syntax highlighting, auto-complete brackets, line numbers, and active line indicator for all languages.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon blue">↔️</div>
+        <div class="feat-title">Resizable Panels</div>
+        <div class="feat-desc">Drag the center divider to resize editor vs output. Mobile gets a dedicated bottom tab bar.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon red">🔌</div>
+        <div class="feat-title">Live API Status</div>
+        <div class="feat-desc">Real-time Wandbox API connectivity indicator. Auto-detects available compilers on startup.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LANGUAGES -->
+  <section class="langs-section">
+    <h2 class="section-title">SUPPORTED LANGUAGES</h2>
+    <p class="section-sub" style="margin-bottom:32px">More being added regularly.</p>
+    <div class="lang-chips">
+      <div class="lang-chip"><span class="cdot" style="background:#f7df1e"></span>JavaScript<span class="badge badge-wasm">BROWSER</span></div>
+      <div class="lang-chip"><span class="cdot" style="background:#e34c26"></span>HTML<span class="badge badge-wasm">BROWSER</span></div>
+      <div class="lang-chip"><span class="cdot" style="background:#3572A5"></span>Python<span class="badge badge-wasm">WASM</span></div>
+      <div class="lang-chip"><span class="cdot" style="background:#000080"></span>Lua<span class="badge badge-wasm">WASM</span></div>
+      <div class="lang-chip"><span class="cdot" style="background:#f34b7d"></span>C++<span class="badge badge-api">API</span></div>
+      <div class="lang-chip"><span class="cdot" style="background:#555"></span>C<span class="badge badge-api">API</span></div>
+      <div class="lang-chip"><span class="cdot" style="background:#b07219"></span>Java<span class="badge badge-api">API</span></div>
+      <div class="lang-chip"><span class="cdot" style="background:#dea584"></span>Rust<span class="badge badge-api">API</span></div>
+      <div class="lang-chip"><span class="cdot" style="background:#00add8"></span>Go<span class="badge badge-api">API</span></div>
+      <div class="lang-chip"><span class="cdot" style="background:#701516"></span>Ruby<span class="badge badge-api">API</span></div>
+      <div class="lang-chip"><span class="cdot" style="background:#4f5d95"></span>PHP<span class="badge badge-api">API</span></div>
+      <div class="lang-chip"><span class="cdot" style="background:#89e051"></span>Bash<span class="badge badge-api">API</span></div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="lfooter">
+    <div class="lfooter-left">CodeForge v2.0 — Multi-Language Playground</div>
+    <div class="lfooter-right">Powered by Wandbox API · Pyodide · wasmoon</div>
+  </footer>
+</div>
+
+<!-- ═══════════════════════════════════
+     AUTH MODAL
+═══════════════════════════════════ -->
+<div id="authOverlay">
+  <div class="auth-box">
+    <div class="auth-header">
+      <div class="auth-logo">⚡</div>
+      <div class="auth-title">CODE<span style="color:var(--green)">FORGE</span></div>
+      <button class="auth-close" onclick="hideAuth()">✕</button>
+    </div>
+
+    <div class="auth-tabs">
+      <div class="auth-tab on" id="authTabLogin" onclick="switchAuthTab('login')">Log In</div>
+      <div class="auth-tab" id="authTabSignup" onclick="switchAuthTab('signup')">Sign Up</div>
+    </div>
+
+    <div class="auth-body">
+      <div class="auth-err" id="authErr"></div>
+
+      <!-- Login form -->
+      <div id="formLogin">
+        <div class="auth-field">
+          <label class="auth-label">EMAIL</label>
+          <input class="auth-input" type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">PASSWORD</label>
+          <input class="auth-input" type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="auth-btn" onclick="doLogin()">Log In →</button>
+      </div>
+
+      <!-- Signup form -->
+      <div id="formSignup" style="display:none">
+        <div class="auth-field">
+          <label class="auth-label">USERNAME</label>
+          <input class="auth-input" type="text" id="signupName" placeholder="coder123" autocomplete="username">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">EMAIL</label>
+          <input class="auth-input" type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="auth-field">
+          <label class="auth-label">PASSWORD</label>
+          <input class="auth-input" type="password" id="signupPass" placeholder="Min. 6 characters" autocomplete="new-password">
+          <div class="auth-hint">At least 6 characters</div>
+        </div>
+        <button class="auth-btn" onclick="doSignup()">Create Account →</button>
+      </div>
+
+      <div class="auth-divider">or</div>
+      <button class="btn-guest" onclick="enterAsGuest()">Continue as Guest →</button>
     </div>
   </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     PLAYGROUND PAGE
+═══════════════════════════════════ -->
+<div class="page hidden" id="playground">
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="logo" onclick="goHome()" title="Back to home">
+      <div class="logo-icon">⚡</div>Code<em>Forge</em>
+    </div>
+    <div class="vdiv"></div>
+    <div id="langTabs"></div>
+
+    <div class="top-right">
+      <button class="btn-tb" onclick="document.getElementById('fileInput').click()" title="Open file (Ctrl+O)">
+        📂 Open
+      </button>
+      <input type="file" id="fileInput" accept="*">
+      <div class="vdiv"></div>
+      <div class="user-btn" id="userBtn" onclick="goHome()">
+        <div class="user-avatar" id="userAvatar">G</div>
+        <span id="userName">Guest</span>
+      </div>
+      <button class="btn-run" id="runBtn" onclick="runCode()">
+        ▶ Run <small style="opacity:.55;font-weight:400;font-size:.63rem">Ctrl+↵</small>
+      </button>
+    </div>
+  </div>
+
+  <!-- MOBILE LANG ROW (injected into editor panel header) -->
+
+  <!-- MAIN SPLIT -->
   <div id="main">
+    <!-- EDITOR -->
     <div class="panel" id="editorPanel">
-      <div class="phead">
+      <div class="phead" id="editorPhead">
         <span class="phead-title">Editor</span>
         <span class="phead-badge" id="langBadge">javascript</span>
         <span class="phead-file" id="fileLabel" style="display:none"></span>
-        <div class="phead-r"><span class="phead-cursor" id="cursorPos">1 : 1</span></div>
+        <div class="phead-r">
+          <span class="phead-cursor" id="cursorPos">1:1</span>
+        </div>
       </div>
-      <div id="editorWrap"><textarea id="codeEditor"></textarea></div>
+      <!-- Mobile lang row -->
+      <div class="mob-lang-row" id="mobLangRow" style="display:none"></div>
+      <div id="editorWrap">
+        <textarea id="codeEditor"></textarea>
+      </div>
     </div>
+
+    <!-- SPLITTER -->
     <div id="splitter"></div>
+
+    <!-- OUTPUT -->
     <div class="panel" id="outputPanel">
       <div class="otabs">
         <div class="otab on" id="tabCon" onclick="switchTab('console')"><span class="odot"></span>Console</div>
@@ -52,25 +964,47 @@
         <div id="previewView">
           <div class="prev-bar">
             <div class="prev-dots"><div class="prev-dot"></div><div class="prev-dot"></div><div class="prev-dot"></div></div>
-            <div class="prev-url" id="prevUrl">preview://sandbox</div>
+            <div class="prev-url">preview://sandbox</div>
           </div>
           <iframe id="previewFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- MOBILE NAV BAR -->
+  <div id="mobileNav">
+    <button class="mnav-btn on" id="mnav-editor" onclick="mobSwitch('editor')">
+      <span class="mico">✏️</span>Editor
+    </button>
+    <button class="mnav-btn" id="mnav-lang" onclick="mobShowLangPicker()">
+      <span class="mico">🌐</span><span id="mnav-lang-lbl">JS</span>
+    </button>
+    <button class="mnav-btn mnav-run" id="mnav-run-btn" onclick="runCode()">
+      <span class="mico">▶</span>RUN
+    </button>
+    <button class="mnav-btn" id="mnav-console" onclick="mobSwitch('console')">
+      <span class="mico">⬛</span>Console
+    </button>
+    <button class="mnav-btn" id="mnav-file" onclick="document.getElementById('fileInput').click()">
+      <span class="mico">📂</span>Open
+    </button>
+  </div>
+
+  <!-- STATUS BAR -->
   <div id="statusbar">
     <div class="sitem"><div class="sdot" id="sdot"></div><span id="stext">Ready</span></div>
     <div class="sitem" id="slang">JavaScript</div>
     <div class="sitem" id="sapiStatus">
       <span id="sapiDot" style="width:5px;height:5px;border-radius:50%;background:var(--t3);display:inline-block"></span>
-      <span id="sapiText">API checking…</span>
+      <span id="sapiText">API…</span>
     </div>
     <div class="sitem ssep" id="stime"></div>
     <div class="sitem" id="sfileStat" style="display:none;color:var(--cyan)"></div>
-    <div class="sitem">CodeForge v2.8</div>
   </div>
 </div>
+
+<!-- DROP ZONE + TOAST (global) -->
 <div id="dropZone">
   <div class="dz-icon">📂</div>
   <div class="dz-text">Drop your file here</div>
@@ -78,9 +1012,27 @@
 </div>
 <div id="toast"></div>
 
-<!-- CodeMirror Core -->
+<!-- MOBILE LANG PICKER SHEET -->
+<div id="langSheet" style="
+  position:fixed;inset:0;z-index:600;
+  background:rgba(8,8,11,.92);
+  display:none;align-items:flex-end;
+" onclick="if(event.target===this)closeLangSheet()">
+  <div style="
+    width:100%;background:var(--bg2);
+    border-top:1px solid var(--bd2);border-radius:16px 16px 0 0;
+    padding:16px;max-height:70vh;overflow-y:auto;
+  ">
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="width:36px;height:4px;background:var(--bd2);border-radius:2px;margin:0 auto 12px;"></div>
+      <span style="font-family:var(--mono);font-size:.7rem;color:var(--t2);text-transform:uppercase;letter-spacing:.08em">Select Language</span>
+    </div>
+    <div id="langSheetGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+  </div>
+</div>
+
+<!-- CodeMirror -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-<!-- Language Modes -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
@@ -92,17 +1044,682 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/go/go.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/php/php.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/swift/swift.min.js"></script>
-<!-- Addons -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
-<!-- CodeForge Scripts (urutan penting!) -->
-<script src="js/langs.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/runners.js"></script>
-<script src="js/api.js"></script>
-<script src="js/editor.js"></script>
+
+<script>
+/* ═══════════════════════════════════════
+   AUTH SYSTEM (localStorage)
+═══════════════════════════════════════ */
+let currentUser = null;
+
+function showAuth(tab='login'){
+  document.getElementById('authOverlay').classList.add('show');
+  switchAuthTab(tab);
+  clearAuthErr();
+}
+function hideAuth(){
+  document.getElementById('authOverlay').classList.remove('show');
+}
+function switchAuthTab(tab){
+  document.getElementById('authTabLogin').classList.toggle('on', tab==='login');
+  document.getElementById('authTabSignup').classList.toggle('on', tab==='signup');
+  document.getElementById('formLogin').style.display = tab==='login' ? '' : 'none';
+  document.getElementById('formSignup').style.display = tab==='signup' ? '' : 'none';
+  clearAuthErr();
+}
+function showAuthErr(msg){
+  const el = document.getElementById('authErr');
+  el.textContent = msg; el.classList.add('show');
+}
+function clearAuthErr(){
+  document.getElementById('authErr').classList.remove('show');
+}
+
+function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  if (!email || !pass){ showAuthErr('Please fill in all fields'); return; }
+
+  const users = JSON.parse(localStorage.getItem('cf_users') || '{}');
+  const user  = users[email];
+  if (!user){ showAuthErr('Account not found. Sign up first!'); return; }
+  if (user.password !== btoa(pass)){ showAuthErr('Incorrect password'); return; }
+
+  loginSuccess(user.name, email);
+}
+
+function doSignup(){
+  const name  = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const pass  = document.getElementById('signupPass').value;
+  if (!name || !email || !pass){ showAuthErr('Please fill in all fields'); return; }
+  if (pass.length < 6){ showAuthErr('Password must be at least 6 characters'); return; }
+  if (!/\S+@\S+\.\S+/.test(email)){ showAuthErr('Please enter a valid email'); return; }
+
+  const users = JSON.parse(localStorage.getItem('cf_users') || '{}');
+  if (users[email]){ showAuthErr('Email already registered. Log in instead!'); return; }
+
+  users[email] = { name, email, password: btoa(pass) };
+  localStorage.setItem('cf_users', JSON.stringify(users));
+  loginSuccess(name, email);
+}
+
+function loginSuccess(name, email){
+  currentUser = { name, email };
+  localStorage.setItem('cf_session', JSON.stringify(currentUser));
+  hideAuth();
+  updateUserUI(name);
+  gotoPlayground();
+  showToast(`👋 Welcome, ${name}!`, 'ok');
+}
+
+function enterAsGuest(){
+  currentUser = null;
+  hideAuth();
+  updateUserUI('Guest');
+  gotoPlayground();
+}
+
+function updateUserUI(name){
+  document.getElementById('userName').textContent = name;
+  document.getElementById('userAvatar').textContent = name[0].toUpperCase();
+}
+
+function goHome(){
+  document.getElementById('landing').classList.add('active');
+  document.getElementById('landing').classList.remove('hidden');
+  document.getElementById('playground').classList.remove('active');
+  document.getElementById('playground').classList.add('hidden');
+}
+
+function gotoPlayground(){
+  document.getElementById('landing').classList.remove('active');
+  document.getElementById('landing').classList.add('hidden');
+  document.getElementById('playground').classList.add('active');
+  document.getElementById('playground').classList.remove('hidden');
+  if (!playgroundInited) initPlayground();
+  else setTimeout(() => editor && editor.refresh(), 80);
+}
+
+/* Check existing session on load */
+window.addEventListener('DOMContentLoaded', () => {
+  const sess = localStorage.getItem('cf_session');
+  if (sess){
+    try {
+      currentUser = JSON.parse(sess);
+      updateUserUI(currentUser.name);
+    } catch(e){}
+  }
+  // Keyboard shortcut to close auth
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') hideAuth();
+  });
+});
+
+/* ═══════════════════════════════════════
+   MOBILE PANEL SWITCHING
+═══════════════════════════════════════ */
+let mobActivePanel = 'editor';
+
+function mobSwitch(panel){
+  mobActivePanel = panel;
+  const ep = document.getElementById('editorPanel');
+  const op = document.getElementById('outputPanel');
+  const btnE = document.getElementById('mnav-editor');
+  const btnC = document.getElementById('mnav-console');
+
+  if (panel === 'editor'){
+    ep.classList.remove('mob-hidden');
+    op.classList.add('mob-hidden');
+    btnE.classList.add('on');
+    btnC.classList.remove('on');
+    setTimeout(() => editor && editor.refresh(), 50);
+  } else {
+    ep.classList.add('mob-hidden');
+    op.classList.remove('mob-hidden');
+    btnE.classList.remove('on');
+    btnC.classList.add('on');
+  }
+}
+
+function mobShowLangPicker(){
+  const sheet = document.getElementById('langSheet');
+  const grid  = document.getElementById('langSheetGrid');
+  grid.innerHTML = '';
+  LANGS.forEach(l => {
+    const btn = document.createElement('button');
+    btn.style.cssText = `
+      display:flex;align-items:center;gap:8px;
+      padding:12px 14px;background:${l.id===curLang.id?'var(--bg3)':'var(--bg4)'};
+      border:1px solid ${l.id===curLang.id?'var(--green)':'var(--bd2)'};
+      border-radius:9px;color:var(--t);
+      font-family:var(--mono);font-size:.75rem;font-weight:600;
+      cursor:pointer;text-align:left;width:100%;
+    `;
+    btn.innerHTML = `<span style="width:9px;height:9px;border-radius:50%;background:${l.dot};flex-shrink:0"></span>${l.label}`;
+    btn.onclick = () => { selectLang(l); closeLangSheet(); mobSwitch('editor'); };
+    grid.appendChild(btn);
+  });
+  sheet.style.display = 'flex';
+}
+
+function closeLangSheet(){
+  document.getElementById('langSheet').style.display = 'none';
+}
+
+/* ═══════════════════════════════════════
+   LANGUAGE DEFINITIONS
+═══════════════════════════════════════ */
+const LANGS = [
+  { id:'javascript', label:'JavaScript', ext:['js','mjs'], dot:'#f7df1e', cm:'javascript', piston:null,
+    code:`// JavaScript — runs directly in browser\nconsole.log("Hello from JavaScript! 🚀");\n\nconst greet = name => \`Welcome, \${name}! It is \${new Date().toLocaleTimeString()}\`;\nconsole.log(greet("CodeForge"));\n\nconst fib = n => n <= 1 ? n : fib(n-1) + fib(n-2);\nfor (let i = 0; i <= 10; i++) console.log(\`fib(\${i}) = \${fib(i)}\`);` },
+  { id:'html', label:'HTML', ext:['html','htm'], dot:'#e34c26', cm:'htmlmixed', piston:null,
+    code:`<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="UTF-8">\n  <style>\n    body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;display:flex;align-items:center;justify-content:center;margin:0}\n    .card{background:#fff;padding:40px;border-radius:16px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}\n    h1{color:#333;margin-bottom:10px} p{color:#666}\n    button{margin-top:20px;padding:12px 28px;background:#667eea;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer}\n    button:hover{background:#764ba2}\n  </style>\n</head>\n<body>\n  <div class="card">\n    <h1>🎉 Hello, CodeForge!</h1>\n    <p>Your HTML renders live in the Preview tab.</p>\n    <button onclick="this.textContent='Clicked! ✅'">Click Me</button>\n  </div>\n</body>\n</html>` },
+  { id:'python', label:'Python', ext:['py'], dot:'#3572A5', cm:'python', piston:'WASM',
+    code:`# Python — runs in browser via Pyodide (WASM)\nprint("Hello from Python! 🐍")\n\nsquares = [x**2 for x in range(1, 11)]\nprint("Squares:", squares)\n\ndef fibonacci(n):\n    a, b = 0, 1\n    result = []\n    for _ in range(n):\n        result.append(a)\n        a, b = b, a + b\n    return result\n\nprint("Fibonacci:", fibonacci(10))` },
+  { id:'cpp', label:'C++', ext:['cpp','cc','cxx'], dot:'#f34b7d', cm:'text/x-c++src', piston:'cpp',
+    code:`// C++ — via Wandbox API\n#include <iostream>\n#include <vector>\nusing namespace std;\n\nint fib(int n){ return n<=1?n:fib(n-1)+fib(n-2); }\n\nint main(){\n    cout << "Hello from C++! 🔥" << endl;\n    cout << "Fibonacci: ";\n    for(int i=0;i<=10;i++){ cout<<fib(i); if(i<10)cout<<", "; }\n    cout << endl;\n    return 0;\n}` },
+  { id:'c', label:'C', ext:['c'], dot:'#555555', cm:'text/x-csrc', piston:'c',
+    code:`// C — via Wandbox API\n#include <stdio.h>\n\nint main(){\n    printf("Hello from C! 🏆\\n");\n    for(int i=1;i<=10;i++) printf("%d%s",i*i,i<10?", ":"");\n    printf("\\n");\n    return 0;\n}` },
+  { id:'java', label:'Java', ext:['java'], dot:'#b07219', cm:'text/x-java', piston:'java',
+    code:`// Java — via Wandbox API\nimport java.util.ArrayList;\nimport java.util.List;\n\npublic class Main {\n    static int fib(int n){ return n<=1?n:fib(n-1)+fib(n-2); }\n    public static void main(String[] args){\n        System.out.println("Hello from Java! ☕");\n        for(int i=0;i<=10;i++) System.out.print(fib(i)+(i<10?", ":"\\n"));\n        List<String> l=new ArrayList<>(); l.add("Java"); l.add("Python");\n        System.out.println("Languages: "+l);\n    }\n}` },
+  { id:'lua', label:'Lua', ext:['lua'], dot:'#000080', cm:'lua', piston:'WASM',
+    code:`-- Lua — runs in browser via wasmoon (WASM)\nprint("Hello from Lua! 🌙")\n\nlocal function fib(n)\n  if n<=1 then return n end\n  return fib(n-1)+fib(n-2)\nend\n\nlocal t={}\nfor i=0,10 do t[#t+1]=fib(i) end\nprint("Fibonacci: "..table.concat(t,", "))` },
+  { id:'rust', label:'Rust', ext:['rs'], dot:'#dea584', cm:'rust', piston:'rust',
+    code:`// Rust — via Wandbox API\nfn fib(n:u64)->u64{ if n<=1{n}else{fib(n-1)+fib(n-2)} }\n\nfn main(){\n    println!("Hello from Rust! 🦀");\n    let seq:Vec<u64>=(0..=10).map(fib).collect();\n    let s:Vec<String>=seq.iter().map(|x|x.to_string()).collect();\n    println!("Fibonacci: {}",s.join(", "));\n}` },
+  { id:'go', label:'Go', ext:['go'], dot:'#00add8', cm:'go', piston:'go',
+    code:`// Go — via Wandbox API\npackage main\nimport "fmt"\n\nfunc fib(n int) int { if n<=1{return n}; return fib(n-1)+fib(n-2) }\n\nfunc main(){\n    fmt.Println("Hello from Go! 🐹")\n    fibs:=make([]int,11)\n    for i:=range fibs{fibs[i]=fib(i)}\n    fmt.Println("Fibonacci:",fibs)\n}` },
+  { id:'ruby', label:'Ruby', ext:['rb'], dot:'#701516', cm:'ruby', piston:'ruby',
+    code:`# Ruby — via Wandbox API\nputs "Hello from Ruby! 💎"\ndef fib(n)=n<=1?n:fib(n-1)+fib(n-2)\nputs "Fibonacci: #{(0..10).map{|i|fib(i)}.join(', ')}"` },
+  { id:'php', label:'PHP', ext:['php'], dot:'#4f5d95', cm:'php', piston:'php',
+    code:`<?php\necho "Hello from PHP! 🐘\\n";\nfunction fib($n){return $n<=1?$n:fib($n-1)+fib($n-2);}\n$f=array_map('fib',range(0,10));\necho "Fibonacci: ".implode(", ",$f)."\\n";\n?>` },
+  { id:'bash', label:'Bash', ext:['sh','bash'], dot:'#89e051', cm:'shell', piston:'bash',
+    code:`#!/bin/bash\necho "Hello from Bash! 🐚"\nNAME="CodeForge"\necho "Welcome to $NAME v2.0"\nfor i in 1 2 3 4 5; do echo "  $i squared = $((i*i))"; done` },
+];
+
+/* ═══════════════════════════════════════
+   PLAYGROUND STATE & INIT
+═══════════════════════════════════════ */
+let curLang = LANGS[0];
+let editor  = null;
+let running = false;
+let activeTab = 'console';
+let openedFile = null;
+let playgroundInited = false;
+const isMobile = () => window.innerWidth <= 700;
+
+function initPlayground(){
+  playgroundInited = true;
+
+  // Desktop lang tabs
+  const tabsEl = document.getElementById('langTabs');
+  // Mobile lang row
+  const mobRow = document.getElementById('mobLangRow');
+  if (isMobile()) mobRow.style.display = 'flex';
+
+  LANGS.forEach(l => {
+    // Desktop tab
+    const b = document.createElement('button');
+    b.className = 'ltab' + (l.id===curLang.id?' on':'');
+    b.id = 'ltab-' + l.id;
+    let badge = !l.piston
+      ? `<span class="eng-badge wasm">${l.id==='javascript'?'JS':l.id==='html'?'HTML':'WASM'}</span>`
+      : `<span class="eng-badge api-chk" id="badge-${l.id}">API…</span>`;
+    b.innerHTML = `<span class="dot" style="background:${l.dot}"></span>${l.label}${badge}`;
+    b.onclick = () => selectLang(l);
+    tabsEl.appendChild(b);
+
+    // Mobile row tab
+    const mb = document.createElement('button');
+    mb.className = 'ltab' + (l.id===curLang.id?' on':'');
+    mb.id = 'mltab-' + l.id;
+    mb.innerHTML = `<span class="dot" style="background:${l.dot}"></span>${l.label}`;
+    mb.onclick = () => { selectLang(l); };
+    mobRow.appendChild(mb);
+  });
+
+  editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+    mode: curLang.cm, theme: 'material-darker',
+    lineNumbers: true, matchBrackets: true,
+    autoCloseBrackets: true, styleActiveLine: true,
+    indentUnit: 2, tabSize: 2, indentWithTabs: false,
+    extraKeys: {
+      'Ctrl-Enter': runCode, 'Cmd-Enter': runCode,
+      'Ctrl-/': cm => cm.toggleComment(),
+      'Ctrl-O': () => document.getElementById('fileInput').click(),
+    }
+  });
+  editor.setValue(curLang.code);
+  editor.on('cursorActivity', () => {
+    const c = editor.getCursor();
+    document.getElementById('cursorPos').textContent = `${c.line+1}:${c.ch+1}`;
+  });
+
+  const ro = new ResizeObserver(() => editor.refresh());
+  ro.observe(document.getElementById('editorWrap'));
+  setTimeout(() => editor.refresh(), 80);
+
+  initSplitter();
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+  initDragDrop();
+  connectPiston();
+
+  // On mobile: start with editor visible
+  if (isMobile()){
+    document.getElementById('outputPanel').classList.add('mob-hidden');
+  }
+}
+
+/* ═══════════════════════════════════════
+   SPLITTER
+═══════════════════════════════════════ */
+function initSplitter(){
+  const spl = document.getElementById('splitter');
+  const mainEl = document.getElementById('main');
+  const edP = document.getElementById('editorPanel');
+  let drag=false,sx=0,sw=0;
+  spl.addEventListener('mousedown', e => {
+    drag=true; sx=e.clientX; sw=edP.getBoundingClientRect().width;
+    spl.classList.add('dragging'); document.body.style.userSelect='none'; e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!drag) return;
+    let w = sw + (e.clientX - sx);
+    w = Math.max(180, Math.min(w, mainEl.getBoundingClientRect().width - 180));
+    edP.style.flex = `0 0 ${w}px`; editor.refresh();
+  });
+  document.addEventListener('mouseup', () => {
+    if (!drag) return; drag=false;
+    spl.classList.remove('dragging'); document.body.style.userSelect='';
+    editor.refresh();
+  });
+}
+
+/* ═══════════════════════════════════════
+   DRAG DROP
+═══════════════════════════════════════ */
+function initDragDrop(){
+  const dz = document.getElementById('dropZone');
+  let cnt=0;
+  document.addEventListener('dragenter', e => {
+    if(e.dataTransfer.types.includes('Files')){ cnt++; dz.classList.add('show'); }
+  });
+  document.addEventListener('dragleave', () => { if(--cnt<=0){cnt=0;dz.classList.remove('show');} });
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => {
+    e.preventDefault(); cnt=0; dz.classList.remove('show');
+    if(e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+}
+
+/* ═══════════════════════════════════════
+   FILE LOAD
+═══════════════════════════════════════ */
+const EXT_MAP={js:'javascript',mjs:'javascript',html:'html',htm:'html',py:'python',cpp:'cpp',cc:'cpp',cxx:'cpp',c:'c',java:'java',lua:'lua',rs:'rust',go:'go',rb:'ruby',php:'php',sh:'bash',bash:'bash'};
+
+function loadFile(file){
+  const ext = file.name.split('.').pop().toLowerCase();
+  const r = new FileReader();
+  r.onload = e => {
+    const content = e.target.result;
+    const mid = EXT_MAP[ext];
+    const mlang = mid ? LANGS.find(l=>l.id===mid) : null;
+    if (mlang && mlang.id !== curLang.id) _switchLangSilent(mlang);
+    editor.setValue(content);
+    openedFile = file.name;
+    document.getElementById('fileLabel').textContent = '📄 '+file.name;
+    document.getElementById('fileLabel').style.display = '';
+    document.getElementById('sfileStat').textContent = '📄 '+file.name;
+    document.getElementById('sfileStat').style.display = '';
+    clearOutput(); showToast('📂 Opened: '+file.name,'ok');
+    document.getElementById('fileInput').value='';
+    editor.refresh();
+  };
+  r.readAsText(file);
+}
+
+/* ═══════════════════════════════════════
+   LANGUAGE SELECT
+═══════════════════════════════════════ */
+function _switchLangSilent(lang){
+  document.getElementById('ltab-'+curLang.id)?.classList.remove('on');
+  document.getElementById('mltab-'+curLang.id)?.classList.remove('on');
+  document.getElementById('ltab-'+lang.id)?.classList.add('on');
+  document.getElementById('mltab-'+lang.id)?.classList.add('on');
+  curLang = lang;
+  editor.setOption('mode', lang.cm);
+  document.getElementById('langBadge').textContent = lang.label.toLowerCase();
+  document.getElementById('slang').textContent = lang.label;
+  document.getElementById('mnav-lang-lbl').textContent = lang.label.substring(0,4);
+  if (lang.id==='html'){ document.getElementById('tabPrev').style.display=''; }
+  else { document.getElementById('tabPrev').style.display='none'; if(activeTab==='preview')switchTab('console'); }
+}
+
+function selectLang(lang){
+  if (lang.id === curLang.id) return;
+  const cur = editor.getValue();
+  if (cur !== curLang.code && cur.trim()!=='' && !confirm(`Switch to ${lang.label}? Current code will be replaced.`)) return;
+  _switchLangSilent(lang);
+  editor.setValue(lang.code);
+  openedFile=null;
+  document.getElementById('fileLabel').style.display='none';
+  document.getElementById('sfileStat').style.display='none';
+  clearOutput();
+}
+
+/* ═══════════════════════════════════════
+   RUN CODE
+═══════════════════════════════════════ */
+async function runCode(){
+  if (running) return;
+  const code = editor.getValue().trim();
+  if (!code){ showToast('⚠ No code to run','err'); return; }
+
+  running=true;
+  const btn=document.getElementById('runBtn');
+  const mbtn=document.getElementById('mnav-run-btn');
+  btn.disabled=true; btn.innerHTML='⏳';
+  mbtn.classList.add('running'); mbtn.querySelector('.mico').textContent='⏳';
+
+  setStatus('run','Executing…');
+  showLoader(true,`Running ${curLang.label}…`);
+  const t0=Date.now();
+
+  try {
+    if (curLang.id==='javascript')   await runJS(code);
+    else if (curLang.id==='html')    runHTML(code);
+    else if (curLang.id==='python')  await runPython(code);
+    else if (curLang.id==='lua')     await runLua(code);
+    else                             await runPiston(code);
+  } catch(e){ appendLine('error','⚠ '+e.message); }
+
+  document.getElementById('stime').textContent = ((Date.now()-t0)/1000).toFixed(2)+'s';
+  showLoader(false);
+  running=false;
+  btn.disabled=false;
+  btn.innerHTML='▶ Run <small style="opacity:.55;font-weight:400;font-size:.63rem">Ctrl+↵</small>';
+  mbtn.classList.remove('running'); mbtn.querySelector('.mico').textContent='▶';
+  setStatus('idle','Done');
+
+  // On mobile after run → auto switch to console
+  if (isMobile()) mobSwitch('console');
+}
+
+/* ═══════════════════════════════════════
+   JAVASCRIPT
+═══════════════════════════════════════ */
+async function runJS(code){
+  clearConsole(); switchTab('console');
+  const logs=[]; const methods=['log','error','warn','info']; const orig={};
+  methods.forEach(m=>{ orig[m]=console[m]; console[m]=(...a)=>{ orig[m](...a); logs.push({type:m==='log'?'output':m,txt:a.map(x=>typeof x==='object'?JSON.stringify(x,null,2):String(x)).join(' ')}); }; });
+  let err=null;
+  try{ const fn=new Function(code); await fn(); } catch(e){ err=e; }
+  methods.forEach(m=>console[m]=orig[m]);
+  showExecMeta(curLang.label,!err);
+  if(!logs.length&&!err) appendLine('info','→ No output');
+  logs.forEach(l=>appendLine(l.type,l.txt));
+  if(err){ appendLine('error','✗ '+err.toString()); showToast('✗ Runtime error','err'); }
+  else showToast('✓ Executed','ok');
+}
+
+/* ═══════════════════════════════════════
+   HTML
+═══════════════════════════════════════ */
+function runHTML(code){
+  document.getElementById('previewFrame').srcdoc=code;
+  document.getElementById('tabPrev').style.display='';
+  switchTab('preview'); clearConsole();
+  showExecMeta('HTML',true); appendLine('success','✓ Rendered in Preview tab');
+  showToast('✓ HTML rendered','ok');
+  if(isMobile()) mobSwitch('console');
+}
+
+/* ═══════════════════════════════════════
+   LAZY LOADER
+═══════════════════════════════════════ */
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    if(document.querySelector(`script[src="${src}"]`)){res();return;}
+    const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej;
+    document.head.appendChild(s);
+  });
+}
+
+/* ═══════════════════════════════════════
+   PYTHON (Pyodide)
+═══════════════════════════════════════ */
+let _pyodide=null;
+async function getPyodide(){
+  if(_pyodide) return _pyodide;
+  showLoader(true,'⬇ Downloading Python runtime (~10 MB)…');
+  appendLine('info','⬇ Loading Pyodide (CPython WASM)…');
+  appendLine('info','→ First time only. Please wait…');
+  await loadScript('https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js');
+  showLoader(true,'⚙ Initializing Python…');
+  _pyodide=await window.loadPyodide({indexURL:'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/'});
+  return _pyodide;
+}
+async function runPython(code){
+  clearConsole(); switchTab('console');
+  let py; try{ py=await getPyodide(); } catch(e){
+    showExecMeta('Python',false); appendLine('error','✗ '+e.message); showToast('✗ Pyodide failed','err'); return;
+  }
+  py.runPython(`import sys,io\nsys.stdout=io.StringIO()\nsys.stderr=io.StringIO()`);
+  let err=null; try{ await py.runPythonAsync(code); } catch(e){ err=e; }
+  const out=py.runPython('sys.stdout.getvalue()');
+  const serr=py.runPython('sys.stderr.getvalue()');
+  showExecMeta('Python 3 · Pyodide',!err&&!serr);
+  if(out) out.split('\n').forEach((l,i,a)=>{ if(i===a.length-1&&!l)return; appendLine('output',l); });
+  if(serr) serr.split('\n').filter(Boolean).forEach(l=>appendLine('warn',l));
+  if(err){ appendLine('error','✗ '+(err.message||String(err))); showToast('✗ Python error','err'); }
+  else{ if(!out&&!serr)appendLine('info','→ No output'); showToast('✓ Executed (WASM)','ok'); }
+}
+
+/* ═══════════════════════════════════════
+   LUA (wasmoon)
+═══════════════════════════════════════ */
+let _LuaFactory=null;
+async function getLuaFactory(){
+  if(_LuaFactory) return _LuaFactory;
+  showLoader(true,'⬇ Downloading Lua runtime…');
+  const mod=await import('https://cdn.jsdelivr.net/npm/wasmoon@1.16.0/+esm');
+  _LuaFactory=mod.LuaFactory; return _LuaFactory;
+}
+async function runLua(code){
+  clearConsole(); switchTab('console');
+  let LF; try{ LF=await getLuaFactory(); } catch(e){
+    showExecMeta('Lua',false); appendLine('error','✗ '+e.message); showToast('✗ Lua failed','err'); return;
+  }
+  showLoader(true,'⚙ Running Lua…');
+  let engine; try{ const f=new LF(); engine=await f.createEngine(); } catch(e){
+    showExecMeta('Lua',false); appendLine('error','✗ '+e.message); return;
+  }
+  const outputs=[];
+  engine.global.set('print',(...a)=>outputs.push(a.map(x=>x==null?'nil':String(x)).join('\t')));
+  const pre=`local _b=""\nlocal _rp=print\nio=io or {}\nio.write=function(...)\n  for _,v in ipairs({...}) do _b=_b..tostring(v) end\n  while true do local n=_b:find("\\n") if not n then break end\n  _rp(_b:sub(1,n-1)) _b=_b:sub(n+1) end\nend\nio.read=function() return "" end\n`;
+  let err=null;
+  try{ await engine.doString(pre+code); const b=engine.global.get('_b'); if(b&&b!='')outputs.push(b); } catch(e){ err=e; }
+  try{ engine.global.close(); }catch(_){}
+  showExecMeta('Lua 5.4 · wasmoon',!err);
+  outputs.forEach(l=>appendLine('output',l));
+  if(err){ appendLine('error','✗ '+String(err.message||err).replace(/\[string.*?\]:/g,'line')); showToast('✗ Lua error','err'); }
+  else{ if(!outputs.length)appendLine('info','→ No output'); showToast('✓ Executed (WASM)','ok'); }
+}
+
+/* ═══════════════════════════════════════
+   WANDBOX API
+═══════════════════════════════════════ */
+const WANDBOX_URL  = 'https://wandbox.org/api/compile.json';
+const WANDBOX_LIST = 'https://wandbox.org/api/list.json';
+const WANDBOX_CFG  = {
+  cpp:  {candidates:['gcc-head','gcc-13.2.0','gcc-12.3.0','clang-head']},
+  c:    {candidates:['gcc-head','gcc-13.2.0','gcc-12.3.0'], options:'-x c -std=c17'},
+  java: {candidates:['openjdk-head','openjdk-jdk-21+35','openjdk-jdk-17+35']},
+  rust: {candidates:['rust-head','rust-1.70.0','rust-1.65.0']},
+  go:   {candidates:['go-head','go-1.21.0','go-1.20.5']},
+  ruby: {candidates:['ruby-head','ruby-3.2.2','ruby-3.1.4']},
+  php:  {candidates:['php-head','php-8.2.7','php-8.1.22']},
+  bash: {candidates:['bash','bash-5.2.15','bash-5.1.16']},
+};
+const wandboxCompilers={};
+let wandboxOnline=false;
+
+async function connectPiston(){
+  setApiStatus('checking','API…');
+  let list;
+  try{
+    const r=await fetchWithTimeout(WANDBOX_LIST,{},9000);
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    list=await r.json();
+  } catch(e){
+    wandboxOnline=false;
+    Object.keys(WANDBOX_CFG).forEach(l=>updateBadge(l,'offline'));
+    setApiStatus('offline','API Offline');
+    showToast('⚠ Wandbox unreachable','err'); return;
+  }
+  const avail=new Set(list.map(c=>c.name));
+  let found=0;
+  Object.entries(WANDBOX_CFG).forEach(([lid,cfg])=>{
+    const m=cfg.candidates.find(c=>avail.has(c));
+    wandboxCompilers[lid]=m||cfg.candidates[0];
+    updateBadge(lid,m?'ok':'offline');
+    if(m)found++;
+  });
+  wandboxOnline=true;
+  setApiStatus('online',`API Online · ${found} langs`);
+  showToast(`✓ Wandbox connected (${found} compilers)`,'ok');
+}
+
+function fetchWithTimeout(url,opts={},ms=10000){
+  const c=new AbortController();
+  const t=setTimeout(()=>c.abort(),ms);
+  return fetch(url,{...opts,signal:c.signal}).finally(()=>clearTimeout(t));
+}
+
+function setApiStatus(state,text){
+  const d=document.getElementById('sapiDot'),t=document.getElementById('sapiText');
+  if(!d||!t) return;
+  d.style.background={online:'var(--green)',offline:'var(--red)',checking:'var(--yellow)'}[state]||'var(--t3)';
+  t.textContent=text;
+}
+
+function updateBadge(lid,state){
+  const el=document.getElementById('badge-'+lid); if(!el) return;
+  const m={ok:['api-chk','api-off','api-ok','API ✓'],offline:['api-chk','api-ok','api-off','API ✗'],checking:['api-ok','api-off','api-chk','API…']};
+  const [r1,r2,add,lbl]=m[state]||m.checking;
+  el.classList.remove(r1,r2); el.classList.add(add); el.textContent=lbl;
+}
+
+async function runPiston(code){
+  clearConsole(); switchTab('console');
+  const lid=curLang.id;
+  const cfg=WANDBOX_CFG[lid];
+  if(!cfg){ appendLine('error',`Language "${curLang.label}" not configured`); return; }
+  const compiler=wandboxCompilers[lid]||cfg.candidates[0];
+  if(!wandboxOnline) appendLine('warn','⚠ API was offline — attempting now…');
+  appendLine('info',`· Sending to Wandbox API (${compiler})…`);
+  let data=null,lastErr=null;
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      const sendCode=lid==='java'?code.replace(/\bpublic(\s+)(class|interface|enum)\b/g,'$2'):code;
+      const body={compiler,code:sendCode,stdin:'',save:false};
+      if(cfg.options) body['compiler-option-raw']=cfg.options;
+      const r=await fetchWithTimeout(WANDBOX_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},20000);
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      data=await r.json(); break;
+    }catch(e){
+      lastErr=e;
+      if(attempt<2){ appendLine('warn',`⟳ Attempt ${attempt} failed (${e.message}) — retrying…`); await new Promise(r=>setTimeout(r,1500)); }
+    }
+  }
+  if(!data){
+    showExecMeta(curLang.label,false);
+    appendLine('error',`✗ All attempts failed: ${lastErr?.message}`);
+    appendLine('info','· Check your internet connection');
+    wandboxOnline=false; setApiStatus('offline','API Offline');
+    Object.keys(WANDBOX_CFG).forEach(l=>updateBadge(l,'offline'));
+    showToast('✗ API unreachable','err'); return;
+  }
+  wandboxOnline=true; setApiStatus('online','API Online'); updateBadge(lid,'ok');
+  const code2=parseInt(data.status??'0',10);
+  const po=data.program_output||'', co=data.compiler_output||'',
+        ce=data.compiler_error||'', pe=data.program_error||'';
+  const ok=code2===0&&!ce;
+  showExecMeta(`${curLang.label} · ${compiler}`,ok);
+  if(co) co.split('\n').filter(Boolean).forEach(l=>appendLine('info',l));
+  if(ce) ce.split('\n').filter(Boolean).forEach(l=>appendLine('error',l));
+  if(po) po.split('\n').forEach((l,i,a)=>{ if(i===a.length-1&&!l)return; appendLine('output',l); });
+  if(pe) pe.split('\n').filter(Boolean).forEach(l=>appendLine('error',l));
+  if(code2!==0) appendLine('warn',`↳ Exit code ${code2}`);
+  if(!po&&!ce&&!pe&&ok) appendLine('info','→ No output');
+  if(ok) showToast('✓ Executed via Wandbox','ok');
+  else   showToast('✗ Execution error','err');
+}
+
+/* ═══════════════════════════════════════
+   OUTPUT HELPERS
+═══════════════════════════════════════ */
+function clearConsole(){
+  document.getElementById('consoleView').innerHTML='';
+}
+function clearOutput(){
+  clearConsole();
+  const e=document.createElement('div'); e.className='empty-state'; e.id='emptyState';
+  e.innerHTML='<div class="empty-icon">▣</div><div>Press ▶ Run to execute</div><div class="empty-sub">Ctrl + Enter shortcut</div>';
+  document.getElementById('consoleView').appendChild(e);
+  document.getElementById('previewFrame').srcdoc='';
+  document.getElementById('stime').textContent='';
+}
+function appendLine(type,text){
+  const v=document.getElementById('consoleView');
+  document.getElementById('emptyState')?.remove();
+  const p={output:'›',error:'✗',warn:'⚠',info:'·',success:'✓'};
+  const l=document.createElement('div'); l.className='cline '+type;
+  l.innerHTML=`<span class="cpre">${p[type]||'›'}</span><span class="cval">${escHtml(text)}</span>`;
+  v.appendChild(l); v.scrollTop=v.scrollHeight;
+}
+function showExecMeta(label,ok){
+  const v=document.getElementById('consoleView');
+  document.getElementById('emptyState')?.remove();
+  const m=document.createElement('div'); m.className='exec-meta';
+  m.innerHTML=`<span class="ebadge ${ok?'eok':'eerr'}">${ok?'OK':'ERROR'}</span><span>${label}</span><span style="color:var(--t3)">•</span><span>${new Date().toLocaleTimeString()}</span>`;
+  v.appendChild(m);
+  const s=document.createElement('hr'); s.className='csep'; v.appendChild(s);
+}
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function switchTab(tab){
+  activeTab=tab;
+  document.getElementById('tabCon').classList.toggle('on',tab==='console');
+  document.getElementById('tabPrev').classList.toggle('on',tab==='preview');
+  document.getElementById('consoleView').classList.toggle('on',tab==='console');
+  document.getElementById('previewView').classList.toggle('on',tab==='preview');
+}
+function showLoader(show,txt='Running…'){
+  document.getElementById('loaderText').textContent=txt;
+  document.getElementById('loader').classList.toggle('on',show);
+}
+function setStatus(state,txt){
+  document.getElementById('sdot').className='sdot'+(state==='run'?' run':'');
+  document.getElementById('stext').textContent=txt;
+}
+let _tt;
+function showToast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=`toast show ${type}`;
+  clearTimeout(_tt); _tt=setTimeout(()=>t.className='toast',2600);
+}
+
+window.addEventListener('load', () => {
+  // Check if on mobile — adjust initial layout visibility
+  if (isMobile()){
+    document.getElementById('mobLangRow')?.style.setProperty('display','none');
+  }
+});
+</script>
 </body>
 </html>
