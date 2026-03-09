@@ -415,8 +415,17 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(
 .logo em{color:var(--green);font-style:normal}
 .vdiv{width:1px;height:22px;background:var(--bd2);flex-shrink:0}
 
-#langTabs{display:flex;align-items:center;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+#langTabs{display:flex;align-items:center;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;scroll-behavior:smooth}
 #langTabs::-webkit-scrollbar{display:none}
+.lang-scroll-btn{
+  flex-shrink:0;width:24px;height:24px;border-radius:5px;
+  background:var(--bg3);border:1px solid var(--bd2);
+  color:var(--t2);font-size:.7rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:.13s;user-select:none;
+}
+.lang-scroll-btn:hover{background:var(--bg4);color:var(--t);border-color:var(--t3)}
+.lang-scroll-btn.hidden{opacity:0;pointer-events:none}
 .ltab{
   display:flex;align-items:center;gap:5px;
   padding:4px 10px;border-radius:5px;
@@ -1087,7 +1096,9 @@ body.light-theme #statusbar{background:var(--bg3)}
       <div class="logo-icon">⚡</div>Code<em>Forge</em>
     </div>
     <div class="vdiv"></div>
+    <button class="lang-scroll-btn hidden" id="langScrollL" onclick="scrollLangTabs(-1)" title="Scroll left">‹</button>
     <div id="langTabs"></div>
+    <button class="lang-scroll-btn hidden" id="langScrollR" onclick="scrollLangTabs(1)" title="Scroll right">›</button>
 
     <div class="top-right">
       <button class="btn-tb" onclick="document.getElementById('fileInput').click()" title="Open file (Ctrl+O)">
@@ -1605,6 +1616,7 @@ function initPlayground(){
   setTimeout(() => editor.refresh(), 80);
 
   initSplitter();
+  initLangTabsScroll();
   document.getElementById('fileInput').addEventListener('change', e => {
     if (e.target.files[0]) loadFile(e.target.files[0]);
   });
@@ -1683,6 +1695,40 @@ function loadFile(file){
     editor.refresh();
   };
   r.readAsText(file);
+}
+
+/* ═══════════════════════════════════════
+   LANG TABS SCROLL
+═══════════════════════════════════════ */
+function scrollLangTabs(dir){
+  const tabs = document.getElementById('langTabs');
+  tabs.scrollBy({left: dir * 120, behavior:'smooth'});
+}
+
+function initLangTabsScroll(){
+  const tabs = document.getElementById('langTabs');
+  const btnL = document.getElementById('langScrollL');
+  const btnR = document.getElementById('langScrollR');
+  if (!tabs || !btnL || !btnR) return;
+
+  function updateArrows(){
+    const atStart = tabs.scrollLeft <= 2;
+    const atEnd   = tabs.scrollLeft >= tabs.scrollWidth - tabs.clientWidth - 2;
+    btnL.classList.toggle('hidden', atStart);
+    btnR.classList.toggle('hidden', atEnd);
+  }
+
+  tabs.addEventListener('scroll', updateArrows);
+  // Also update whenever tabs are resized (e.g. window resize)
+  new ResizeObserver(updateArrows).observe(tabs);
+
+  // Mouse wheel scrolls horizontally on desktop
+  tabs.addEventListener('wheel', e => {
+    if (e.deltaY !== 0){ e.preventDefault(); tabs.scrollBy({left: e.deltaY * 1.5, behavior:'smooth'}); }
+  }, {passive:false});
+
+  // Initial check after a tick (tabs need to be populated first)
+  setTimeout(updateArrows, 200);
 }
 
 /* ═══════════════════════════════════════
