@@ -1066,6 +1066,15 @@ body.light-theme #statusbar{background:var(--bg3)}
         </div>
       </div>
 
+        <div class="profile-row">
+          <div>
+            <div class="profile-row-label">Saved Code</div>
+            <div class="profile-row-sub">Clear all auto-saved code per language</div>
+          </div>
+          <button class="btn-danger" style="font-size:.7rem;padding:5px 10px" onclick="clearAllSavedCode()">Clear</button>
+        </div>
+      </div>
+
       <!-- DANGER ZONE (only for logged in users) -->
       <div class="profile-section" id="dangerZone" style="display:none">
         <div class="profile-section-title">Danger Zone</div>
@@ -1105,6 +1114,9 @@ body.light-theme #statusbar{background:var(--bg3)}
         📂 Open
       </button>
       <input type="file" id="fileInput" accept="*">
+      <button class="btn-tb" id="saveBtn" onclick="saveCode()" title="Save code (Ctrl+S)">
+        💾 Save
+      </button>
       <div class="vdiv"></div>
       <div class="user-btn" id="userBtn" onclick="showProfile()">
         <div class="user-avatar" id="userAvatar">G</div>
@@ -1227,6 +1239,25 @@ body.light-theme #statusbar{background:var(--bg3)}
 </div>
 
 <!-- CodeMirror -->
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+<script>
+// Initialize Firebase
+firebase.initializeApp({
+  apiKey: "AIzaSyBoOnlZq1ViRNzi3GkWVopbZ3JBmBEuoSk",
+  authDomain: "codeforge-dc6cd.firebaseapp.com",
+  projectId: "codeforge-dc6cd",
+  storageBucket: "codeforge-dc6cd.firebasestorage.app",
+  messagingSenderId: "192850746957",
+  appId: "1:192850746957:web:b16ceb95c5a873106f0604"
+});
+const auth = firebase.auth();
+const db   = firebase.firestore();
+</script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
@@ -1278,12 +1309,21 @@ function doLogin(){
   const pass  = document.getElementById('loginPass').value;
   if (!email || !pass){ showAuthErr('Please fill in all fields'); return; }
 
-  const users = JSON.parse(localStorage.getItem('cf_users') || '{}');
-  const user  = users[email];
-  if (!user){ showAuthErr('Account not found. Sign up first!'); return; }
-  if (user.password !== btoa(pass)){ showAuthErr('Incorrect password'); return; }
+  const btn = document.querySelector('#formLogin .auth-btn');
+  btn.textContent = 'Logging in…'; btn.disabled = true;
 
-  loginSuccess(user.name, email);
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(cred => {
+      // name stored in Firestore
+      return db.collection('users').doc(cred.user.uid).get().then(doc => {
+        const name = doc.exists ? (doc.data().name || email.split('@')[0]) : email.split('@')[0];
+        loginSuccess(name, email, cred.user.uid);
+      });
+    })
+    .catch(e => {
+      showAuthErr(firebaseErrMsg(e.code));
+      btn.textContent = 'Log In →'; btn.disabled = false;
+    });
 }
 
 function doSignup(){
@@ -1294,22 +1334,44 @@ function doSignup(){
   if (pass.length < 6){ showAuthErr('Password must be at least 6 characters'); return; }
   if (!/\S+@\S+\.\S+/.test(email)){ showAuthErr('Please enter a valid email'); return; }
 
-  const users = JSON.parse(localStorage.getItem('cf_users') || '{}');
-  if (users[email]){ showAuthErr('Email already registered. Log in instead!'); return; }
+  const btn = document.querySelector('#formSignup .auth-btn');
+  btn.textContent = 'Creating…'; btn.disabled = true;
 
-  users[email] = { name, email, password: btoa(pass) };
-  localStorage.setItem('cf_users', JSON.stringify(users));
-  loginSuccess(name, email);
+  auth.createUserWithEmailAndPassword(email, pass)
+    .then(cred => {
+      // Store name in Firestore
+      return db.collection('users').doc(cred.user.uid).set({ name, email, createdAt: new Date() })
+        .then(() => loginSuccess(name, email, cred.user.uid));
+    })
+    .catch(e => {
+      showAuthErr(firebaseErrMsg(e.code));
+      btn.textContent = 'Create Account →'; btn.disabled = false;
+    });
 }
 
-function loginSuccess(name, email){
-  currentUser = { name, email };
-  localStorage.setItem('cf_session', JSON.stringify(currentUser));
+function firebaseErrMsg(code){
+  const map = {
+    'auth/user-not-found':       'Account not found. Sign up first!',
+    'auth/wrong-password':       'Incorrect password.',
+    'auth/email-already-in-use': 'Email already registered. Log in instead!',
+    'auth/invalid-email':        'Please enter a valid email.',
+    'auth/weak-password':        'Password must be at least 6 characters.',
+    'auth/too-many-requests':    'Too many attempts. Try again later.',
+    'auth/network-request-failed': 'Network error. Check your connection.',
+    'auth/invalid-credential':   'Incorrect email or password.',
+  };
+  return map[code] || 'Something went wrong. Please try again.';
+}
+
+function loginSuccess(name, email, uid){
+  currentUser = { name, email, uid };
   hideAuth();
   updateUserUI(name);
   gotoPlayground();
+  loadAllSavedCodesFromFirestore();
   showToast(`👋 Welcome, ${name}!`, 'ok');
 }
+
 
 function enterAsGuest(){
   currentUser = null;
@@ -1324,12 +1386,13 @@ function updateUserUI(name){
 }
 
 function doSignout(){
-  currentUser = null;
-  localStorage.removeItem('cf_session');
-  hideProfile();
-  updateUserUI('Guest');
-  goHome();
-  showToast('Signed out', 'ok');
+  auth.signOut().then(() => {
+    currentUser = null;
+    hideProfile();
+    updateUserUI('Guest');
+    goHome();
+    showToast('Signed out', 'ok');
+  });
 }
 
 function goHome(){
@@ -1412,16 +1475,25 @@ function confirmDeleteAccount(){
   const confirmed = confirm(`Delete account "${currentUser.name}"?\nThis cannot be undone.`);
   if (!confirmed) return;
 
-  const users = JSON.parse(localStorage.getItem('cf_users') || '{}');
-  delete users[currentUser.email];
-  localStorage.setItem('cf_users', JSON.stringify(users));
-
-  currentUser = null;
-  localStorage.removeItem('cf_session');
-  hideProfile();
-  updateUserUI('Guest');
-  goHome();
-  showToast('Account deleted', 'ok');
+  const user = auth.currentUser;
+  // Delete Firestore data first, then Firebase Auth account
+  db.collection('users').doc(user.uid).delete()
+    .then(() => user.delete())
+    .then(() => {
+      currentUser = null;
+      hideProfile();
+      updateUserUI('Guest');
+      goHome();
+      showToast('Account deleted', 'ok');
+    })
+    .catch(e => {
+      // Needs re-authentication if session is old
+      if (e.code === 'auth/requires-recent-login'){
+        showToast('Please log out and log in again before deleting', 'err');
+      } else {
+        showToast('Error deleting account: ' + e.message, 'err');
+      }
+    });
 }
 
 function gotoPlayground(){
@@ -1439,15 +1511,26 @@ window.addEventListener('DOMContentLoaded', () => {
   const prefs = getSavedPrefs();
   if (prefs.lightMode) document.body.classList.add('light-theme');
 
-  // Restore session — auto-enter playground if logged in
-  const sess = localStorage.getItem('cf_session');
-  if (sess){
-    try {
-      currentUser = JSON.parse(sess);
-      updateUserUI(currentUser.name);
-      gotoPlayground(); // ← auto skip landing if already logged in
-    } catch(e){ localStorage.removeItem('cf_session'); }
-  }
+  // Firebase Auth — auto-login if session exists
+  auth.onAuthStateChanged(user => {
+    if (user){
+      db.collection('users').doc(user.uid).get().then(doc => {
+        const name = doc.exists ? (doc.data().name || user.email.split('@')[0]) : user.email.split('@')[0];
+        currentUser = { name, email: user.email, uid: user.uid };
+        updateUserUI(name);
+        gotoPlayground();
+        loadAllSavedCodesFromFirestore();
+      });
+    } else {
+      currentUser = null;
+      // Stay on landing
+    }
+  });
+
+  // Prevent browser default Ctrl+S save dialog
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && e.key==='s'){ e.preventDefault(); saveCode(); }
+  });
 
   // Close overlays on Escape
   document.addEventListener('keydown', e => {
@@ -1615,10 +1698,20 @@ function initPlayground(){
   if (prefs.defaultLang){
     const dl = LANGS.find(l => l.id === prefs.defaultLang);
     if (dl) selectLang(dl);
-    else editor.setValue(curLang.code);
+    else {
+      const saved = loadSavedCode(curLang.id);
+      editor.setValue(saved !== null ? saved : curLang.code);
+    }
   } else {
-    editor.setValue(curLang.code);
+    const saved = loadSavedCode(curLang.id);
+    editor.setValue(saved !== null ? saved : curLang.code);
   }
+
+  // Auto-save on every change
+  editor.on('change', () => scheduleAutoSave());
+
+  // Ctrl+S to save
+  editor.addKeyMap({'Ctrl-S': () => saveCode(), 'Cmd-S': () => saveCode()});
   editor.on('cursorActivity', () => {
     const c = editor.getCursor();
     document.getElementById('cursorPos').textContent = `${c.line+1}:${c.ch+1}`;
@@ -1745,6 +1838,99 @@ function initLangTabsScroll(){
 }
 
 /* ═══════════════════════════════════════
+   SAVE / RESTORE CODE
+   Logged in → Firestore (cross-device)
+   Guest     → localStorage (device only)
+═══════════════════════════════════════ */
+const SAVE_PREFIX = 'cf_code_';
+
+// In-memory cache so switching tabs is instant
+const _codeCache = {};
+
+function saveCode(silent=false){
+  if (!editor) return;
+  const code = editor.getValue();
+  _codeCache[curLang.id] = code;
+
+  if (currentUser){
+    // Save to Firestore
+    db.collection('users').doc(currentUser.uid)
+      .collection('codes').doc(curLang.id)
+      .set({ code, updatedAt: new Date() })
+      .catch(e => console.warn('Firestore save error:', e));
+  } else {
+    // Guest: save to localStorage
+    localStorage.setItem(SAVE_PREFIX + curLang.id, code);
+  }
+  markSaved();
+  if (!silent) showToast('💾 Saved', 'ok');
+}
+
+function loadSavedCode(langId){
+  // Check memory cache first
+  if (_codeCache[langId] !== undefined) return _codeCache[langId];
+  // Guest fallback: localStorage
+  return localStorage.getItem(SAVE_PREFIX + langId) || null;
+}
+
+function clearSavedCode(langId){
+  delete _codeCache[langId];
+  localStorage.removeItem(SAVE_PREFIX + langId);
+  if (currentUser){
+    db.collection('users').doc(currentUser.uid)
+      .collection('codes').doc(langId).delete()
+      .catch(e => console.warn('Firestore delete error:', e));
+  }
+}
+
+// Load ALL saved codes from Firestore at login — cache them
+function loadAllSavedCodesFromFirestore(){
+  if (!currentUser) return;
+  db.collection('users').doc(currentUser.uid)
+    .collection('codes').get()
+    .then(snap => {
+      snap.forEach(doc => {
+        _codeCache[doc.id] = doc.data().code || '';
+      });
+      // Refresh current editor with saved code if available
+      if (_codeCache[curLang.id] !== undefined){
+        editor && editor.setValue(_codeCache[curLang.id]);
+        markSaved();
+      }
+    })
+    .catch(e => console.warn('Firestore load error:', e));
+}
+
+function clearAllSavedCode(){
+  if (!confirm('Clear all saved code for all languages?')) return;
+  LANGS.forEach(l => clearSavedCode(l.id));
+  showToast('🗑 All saved code cleared', 'ok');
+  hideProfile();
+}
+
+// Unsaved indicator — yellow dot on tab
+let _unsaved = false;
+function markUnsaved(){
+  if (_unsaved) return;
+  _unsaved = true;
+  const btn = document.getElementById('saveBtn');
+  if (btn) btn.style.color = 'var(--yellow)';
+}
+function markSaved(){
+  _unsaved = false;
+  const btn = document.getElementById('saveBtn');
+  if (btn) btn.style.color = '';
+}
+
+// Auto-save after 2s of inactivity
+let _autoSaveTimer = null;
+function scheduleAutoSave(){
+  markUnsaved();
+  clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(() => saveCode(true), 2000);
+}
+
+/* ═══════════════════════════════════════
    LANGUAGE SELECT
 ═══════════════════════════════════════ */
 function _switchLangSilent(lang){
@@ -1765,8 +1951,17 @@ function selectLang(lang){
   if (lang.id === curLang.id) return;
   const cur = editor.getValue();
   if (cur !== curLang.code && cur.trim()!=='' && !confirm(`Switch to ${lang.label}? Current code will be replaced.`)) return;
+
+  // Save current lang's code before switching
+  if (cur.trim() !== '') saveCode(true);
+
   _switchLangSilent(lang);
-  editor.setValue(lang.code);
+
+  // Restore saved code for new lang, fallback to default sample
+  const saved = loadSavedCode(lang.id);
+  editor.setValue(saved !== null ? saved : lang.code);
+  markSaved();
+
   openedFile=null;
   document.getElementById('fileLabel').style.display='none';
   document.getElementById('sfileStat').style.display='none';
