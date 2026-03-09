@@ -1193,6 +1193,9 @@ body.light-theme #statusbar{background:var(--bg3)}
     <button class="mnav-btn" id="mnav-console" onclick="mobSwitch('console')">
       <span class="mico">⬛</span>Console
     </button>
+    <button class="mnav-btn" id="mnav-save" onclick="saveCode()">
+      <span class="mico">💾</span>Save
+    </button>
     <button class="mnav-btn" id="mnav-file" onclick="document.getElementById('fileInput').click()">
       <span class="mico">📂</span>Open
     </button>
@@ -1367,8 +1370,7 @@ function loginSuccess(name, email, uid){
   currentUser = { name, email, uid };
   hideAuth();
   updateUserUI(name);
-  gotoPlayground();
-  loadAllSavedCodesFromFirestore();
+  gotoPlayground(() => loadAllSavedCodesFromFirestore());
   showToast(`👋 Welcome, ${name}!`, 'ok');
 }
 
@@ -1496,13 +1498,17 @@ function confirmDeleteAccount(){
     });
 }
 
-function gotoPlayground(){
+function gotoPlayground(afterInit){
   document.getElementById('landing').classList.remove('active');
   document.getElementById('landing').classList.add('hidden');
   document.getElementById('playground').classList.add('active');
   document.getElementById('playground').classList.remove('hidden');
-  if (!playgroundInited) initPlayground();
-  else setTimeout(() => editor && editor.refresh(), 80);
+  if (!playgroundInited){
+    initPlayground();
+    setTimeout(() => { afterInit && afterInit(); }, 300);
+  } else {
+    setTimeout(() => { editor && editor.refresh(); afterInit && afterInit(); }, 80);
+  }
 }
 
 /* Check existing session on load */
@@ -1518,8 +1524,7 @@ window.addEventListener('DOMContentLoaded', () => {
         const name = doc.exists ? (doc.data().name || user.email.split('@')[0]) : user.email.split('@')[0];
         currentUser = { name, email: user.email, uid: user.uid };
         updateUserUI(name);
-        gotoPlayground();
-        loadAllSavedCodesFromFirestore();
+        gotoPlayground(() => loadAllSavedCodesFromFirestore());
       });
     } else {
       currentUser = null;
@@ -1893,9 +1898,11 @@ function loadAllSavedCodesFromFirestore(){
         _codeCache[doc.id] = doc.data().code || '';
       });
       // Refresh current editor with saved code if available
-      if (_codeCache[curLang.id] !== undefined){
-        editor && editor.setValue(_codeCache[curLang.id]);
+      if (editor && _codeCache[curLang.id] !== undefined){
+        editor.setValue(_codeCache[curLang.id]);
+        editor.clearHistory();
         markSaved();
+        showToast('☁️ Code synced', 'ok');
       }
     })
     .catch(e => console.warn('Firestore load error:', e));
